@@ -6,7 +6,7 @@ const getRoutes = require('./routes/database/getData');
 const postRoutes = require('./routes/database/postData');
 
 app.get('/', (req,res,next)=>{
-    res.send("hello From Flora On Heroku");
+    res.sendFile("index.html");
 });
 app.use(bodyParser.json());
 app.use(getRoutes);
