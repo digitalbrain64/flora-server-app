@@ -5,7 +5,7 @@
 const mysql = require('mysql');
 
 // connection to floraserverapp database
-const connection = mysql.createConnection("mysql://ncuser_7435:kFyuWL33kDlybLg7vvKlbUdHBr3AbV@mysql-floraserverapp-6503.nodechef.com:2503/floraserverapp");
+const connection = mysql.createConnection("mysql://bbf377481226a0:eaef03fd@us-cdbr-iron-east-02.cleardb.net/heroku_99593e22b69be93?reconnect=true");
 
 // last update time will be changed dynamically
 var lastUpdateTime;
