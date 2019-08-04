@@ -2,8 +2,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const app = express();
 const port = process.env.PORT || 3000;
-const getRoutes = require('./routes/database/post_routes');
-const postRoutes = require('./routes/database/get_routes');
+const getRoutes = require('./routes/database/get_routes');
+const postRoutes = require('./routes/database/post_routes');
 
 
 // bypass CORS restrictions by setting headers
