@@ -17,6 +17,8 @@ router.get('/getLocationHistory', (req, res, net)=>{
 
 // route to get recent data from device_cache_data
 router.get('/getDataFromCache', (req, res, next) =>{
+  console.log(req.body);
+  
   database.get_user_data_from_cache(function (err, results) {
        if (err) console.log("Database error!");
        else {
