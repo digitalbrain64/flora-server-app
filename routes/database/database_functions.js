@@ -133,7 +133,6 @@ function get_location_history(callback,device_sn, from_date, to_date){
 
 
 module.exports = {
-    add_user,
     post_data_from_flora_device,
     get_user_data_from_cache,
     get_user,
