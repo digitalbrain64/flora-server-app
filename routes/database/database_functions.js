@@ -87,7 +87,7 @@ function check_location_fix(priv_latlng , currenct_latlng){
     request(url, (error, response, body)=> {
       if (!error && response.statusCode === 200) {
         const fbResponse = JSON.parse(body)
-        console.log("Got a response: ", fbResponse)
+        console.log(`lat from api: ${fbResponse.latitude}\n lng from api: ${fbResponse.latitude}`);
       } else {
         console.log("Got an error: ", error, ", status code: ", response.statusCode)
       }
