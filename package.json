@@ -13,6 +13,7 @@
     "body-parser": "^1.18.3",
     "express": "^4.16.4",
     "mysql": "^2.16.0",
+    "request": "^2.88.0",
     "socket.io": "^2.2.0"
   }
 }

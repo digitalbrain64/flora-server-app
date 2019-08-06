@@ -5,43 +5,51 @@ const router = express.Router();
 const database = require('./database_functions');
 
 // route to get location history from device_location_history
-router.get('/getLocationHistory', (req, res, net)=>{
+router.get('/getLocationHistory', (req, res, next)=>{
+  console.log(`#########\nfetching location history:\ndevice_sn: ${req.query.device_sn}\nfrom_date: ${req.query.from_date}\nto_date: ${req.query.to_date}`);
   database.get_location_history(function (err, results) {
     if (err) console.log("Database error!");
     else {
         res.send(JSON.stringify(results));
+        console.log(`results found: ${results.length}\n#########`);
         next();
     }
-  },req.body.device_sn, req.body.from_date, req.body.to_date);
+  },req.query.device_sn, req.query.from_date, req.query.to_date);
 });
 
 // route to get recent data from device_cache_data
 router.get('/getDataFromCache', (req, res, next) =>{
-  console.log(req.body);
-  
+  console.log("fetching data for device_sn: "+req.query.device_sn);
   database.get_user_data_from_cache(function (err, results) {
-       if (err) console.log("Database error!");
-       else {
-           res.send(JSON.stringify(results[0]));
-           next();
-      }
-  }, req.body.device_sn);
+      if (err)
+        console.log("Database error!");
+      else
+        res.send(JSON.stringify(results[0]));
+      next();
+  }, req.query.device_sn);
 });
 
 // route to get user from app_users
-router.get('/getUser', (req, res, next)=>{
-    var pass = req.query.p;
-    var email = req.query.e;
-    database.get_user(function(err, results){
-      if(err){
-        console.log("Database error");
+router.get('/getUserData', (req, res, next)=>{
+    if(!req.query.u){
+      database.get_user(function(err, results){
+        if(err)
+          console.log("Database error");
+        else
+          res.send(results[0]);
         next();
-      }
-      else{
-        res.send(results[0]);
+      }, req.query.e, req.query.p)
+    }
+    else{
+      database.get_user(function(err, results){
+        if(err)
+          console.log("Database error");
+        else
+          res.send(results[0]);
         next();
-      }
-    }, email, pass)
+      }, req.query.u, req.query.p)
+    }
+    
 });
 
 module.exports = router;
