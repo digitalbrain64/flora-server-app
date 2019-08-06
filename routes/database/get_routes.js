@@ -52,4 +52,14 @@ router.get('/getUserData', (req, res, next)=>{
     
 });
 
+router.get('/getWeatherUpdate', (req, res, next)=>{
+  database.get_weather_update(function(err, results){
+    if(err)
+      console.log("Database error");
+    else
+      res.send(JSON.parse(results));
+    next();
+  }, req.query.lat, req.query.lng)
+})
+
 module.exports = router;
