@@ -15,4 +15,9 @@ router.post('/postFloraData', (req,res,next) => {
     next();
 });
 
+
+router.post('/postSosReport', (req, res, next)=>{
+    database.post_sos_report(req.body);
+})
+
 module.exports = router;

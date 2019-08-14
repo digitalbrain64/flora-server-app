@@ -62,4 +62,68 @@ router.get('/getWeatherUpdate', (req, res, next)=>{
   }, req.query.lat, req.query.lng)
 })
 
+
+
+/* password restore routes */
+// 1 : getting email or username of the user
+// checking whats the phone number and sending verification code to the number
+// adding the code to the user in the database
+router.get('/sendRestoreCode', (req, res, next)=>{
+  if(!req.query.e){
+    database.get_pass_restore_code(function(err, result){
+      if(err)
+        res.send({
+          error : err
+        })
+      else
+        res.send(result)
+    },req.query.u);
+  }
+  else{
+    database.get_pass_restore_code(function(err, result){
+      if(err)
+        res.send({
+          error : err
+        })
+      else
+        res.send(result)
+    },req.query.e);
+  }
+
+  
+})
+
+// 2 : getting the email and the code entered by the user
+// validating the code and email if user exists
+// if all went well : email sent back to client for later use in the final step
+router.get('/checkRestoreCode', (req, res, next)=>{
+  var code = req.query.restoreCode;
+  var email = req.query.e;
+
+  database.check_restore_code(function(err, result){
+    if(err)
+      res.send({
+        error : err
+      })
+    else
+      res.send(result)
+  },email,code)
+})
+
+// 3 : sending the new password and email from previous step
+// updating the password and removing the restore_code from user in database
+router.get('/passChange', (req, res, next)=>{
+  var newPass = req.query.newPass;
+  var user_email = req.query.e;
+  database.change_user_pass(function(err, result){
+    if(err)
+      res.send({
+        error : err
+      })
+      else{
+        res.send(result)
+      }
+  },user_email, newPass)
+})
+
 module.exports = router;
