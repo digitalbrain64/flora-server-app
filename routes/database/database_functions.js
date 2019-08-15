@@ -35,6 +35,9 @@ function update_device_cache_data(jsonObj,ip){
   var date = new Date();
   log_time = date.toISOString().slice(0, 19).replace('T', ' ');
   var updateTime = log_time;
+
+  add_row_to_realtime_data(jsonObj, log_time);
+
   device_post_counter++;
     // check after 6sec if lastUpdateTime == updateTime then NO new POST requests from end point: device is off
     // else: device is on
@@ -136,6 +139,16 @@ function check_location_fix(current_latlng){
 }
 */
 
+var add_row_to_realtime_data = (floraDataObj, log_time)=>{
+  mysqlPool.query(`INSERT INTO flora_device_data (device_sn ,log_time ,latitude, longitude, satellites, pulse, battery, gps_status, bt_status, gsm_status)
+  VALUES (${floraDataObj.GSTSerial}, "${log_time}", "${parseFloat(floraDataObj.latitude)/100}", "${parseFloat(floraDataObj.longitude)/100}",${floraDataObj.satellites},${floraDataObj.pulse},${floraDataObj.battery},${floraDataObj.gps_status},${floraDataObj.bt_status},${floraDataObj.gsm_status})`, function(err, result, fields){
+    if(err)
+      throw err;
+    else{
+      console.log('realtime data added');
+    }
+  });
+}
 
 // change device status off/on (0/1)
 var set_device_status = (device_sn,deviceStatus)=>{
@@ -171,8 +184,17 @@ function get_user(callback, credentials, password){
     if(error){
       throw error;
     }
-    return callback(error, result); // return callback function
-
+    else{
+      if(result.length == 0){
+        return callback(error, {
+          status : "error",
+          message : "user not found"
+        })
+      }
+      else{
+        return callback(error, result); 
+      }
+    }
   })
 }
 
@@ -183,7 +205,7 @@ function get_location_history(callback,device_sn, from_date, to_date){
     if(error){
       throw error;
     }
-    return callback(error, result); // return callback function
+      return callback(error, result); // return callback function
   });
 }
 
@@ -191,10 +213,13 @@ function get_weather_update(callback,lat,lng){
   var url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&appid=${openWeatherApiKey}`;
   request(url, (error, response, body)=>{
     if(!error && response.statusCode === 200){
-      return callback(error, body);
+      return callback(error, JSON.stringify(body));
     }
     else
-      throw error;
+      return callback(error, {
+        status : "error",
+        message : error
+      })
   });
 }
 
@@ -277,7 +302,8 @@ function send_pass_restore_code(callback,credentials){
         }
         else{
           callback(error, {
-            error: "no user found"
+            status : "error",
+            message: "no user found",
           })
         }
       }
@@ -293,7 +319,8 @@ function check_restore_code(callback,email,res_code){
     else{
       if(result.length == 0){
         callback(err, {
-          error : "no user found/restore code not correct"
+          status : "error",
+          message : "no user found/restore code not correct"
         });
       }
       else{
@@ -316,10 +343,19 @@ function change_user_pass(callback,email,new_pass){
     if(err)
       throw err;
     else{
-      callback(err, {
-        status : "OK",
-        message : "password changed"
-      })
+      if(result.affectedRows == 0){
+        callback(err, {
+          status : "error",
+          message : "user email not currect - password not changed"
+        })
+      }
+      else{
+        callback(err, {
+          status : "OK",
+          message : "password changed"
+        })
+      }
+      
     }
   })
 }

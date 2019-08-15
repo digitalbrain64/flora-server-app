@@ -31,33 +31,33 @@ router.get('/getDataFromCache', (req, res, next) =>{
 
 // route to get user from app_users
 router.get('/getUserData', (req, res, next)=>{
-    if(!req.query.u){
-      database.get_user(function(err, results){
-        if(err)
-          console.log("Database error");
-        else
-          res.send(results[0]);
-        next();
-      }, req.query.e, req.query.p)
-    }
+    if(!req.query.p && !req.query.u)
+      res.send({
+        status : "error",
+        message : "please provide password and username/email"
+      })
     else{
       database.get_user(function(err, results){
         if(err)
-          console.log("Database error");
+          res.send({
+            status : "error",
+            message : err
+          })
         else
-          res.send(results[0]);
-        next();
+          res.send(results);
       }, req.query.u, req.query.p)
-    }
-    
+    } 
 });
 
 router.get('/getWeatherUpdate', (req, res, next)=>{
   database.get_weather_update(function(err, results){
     if(err)
-      console.log("Database error");
+      res.send({
+        status : "error",
+        message : err
+      });
     else
-      res.send(JSON.parse(results));
+      res.send(results);
     next();
   }, req.query.lat, req.query.lng)
 })
@@ -73,7 +73,8 @@ router.get('/sendRestoreCode', (req, res, next)=>{
     database.get_pass_restore_code(function(err, result){
       if(err)
         res.send({
-          error : err
+          status : "error",
+          message : err
         })
       else
         res.send(result)
@@ -83,7 +84,8 @@ router.get('/sendRestoreCode', (req, res, next)=>{
     database.get_pass_restore_code(function(err, result){
       if(err)
         res.send({
-          error : err
+          status : "error",
+          message : err
         })
       else
         res.send(result)
@@ -103,7 +105,8 @@ router.get('/checkRestoreCode', (req, res, next)=>{
   database.check_restore_code(function(err, result){
     if(err)
       res.send({
-        error : err
+        status : "error",
+        message : err
       })
     else
       res.send(result)
@@ -118,12 +121,16 @@ router.get('/passChange', (req, res, next)=>{
   database.change_user_pass(function(err, result){
     if(err)
       res.send({
-        error : err
+        status : "error",
+        message : err
       })
       else{
         res.send(result)
       }
   },user_email, newPass)
+})
+
+router.get('/getHighestLowestPulse', (req, res, next)=>{
 })
 
 module.exports = router;
