@@ -78,8 +78,14 @@ router.get('/getWeatherUpdate', (req, res, next)=>{
 // checking whats the phone number and sending verification code to the number
 // adding the code to the user in the database
 router.get('/sendRestoreCode', (req, res, next)=>{
-  if(!req.query.e){
-    database.get_pass_restore_code(function(err, result){
+  if(!req.query.u){
+    res.send({
+      status:"error",
+      message:"missing username/email"
+    })
+  }
+  else{
+    database.send_pass_restore_code(function(err, result){
       if(err)
         res.send({
           status : "error",
@@ -89,18 +95,6 @@ router.get('/sendRestoreCode', (req, res, next)=>{
         res.send(result)
     },req.query.u);
   }
-  else{
-    database.get_pass_restore_code(function(err, result){
-      if(err)
-        res.send({
-          status : "error",
-          message : err
-        })
-      else
-        res.send(result)
-    },req.query.e);
-  }
-
   
 })
 

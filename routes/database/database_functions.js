@@ -310,7 +310,7 @@ function send_pass_restore_code(callback,credentials){
                 } 
             }
           })
-          mysqlPool.query(`UPDATE app_users SET restore_code = '${code}' WHERE user_email = '${credentials}' OR user_name = '${credentials}`, (err, result, fields)=>{
+          mysqlPool.query(`UPDATE app_users SET restore_code = '${code}' WHERE user_email = '${credentials}' OR user_name = '${credentials}'`, (err, result, fields)=>{
             if(err)
               throw err;
             else{
@@ -441,7 +441,7 @@ module.exports = {
   get_lowest_pulse,
   change_user_pass,
   check_restore_code,
-  get_pass_restore_code: send_pass_restore_code,
+  send_pass_restore_code,
   post_sos_report,
   get_weather_update,
   update_device_cache_data,
