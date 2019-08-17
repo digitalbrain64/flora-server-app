@@ -305,15 +305,16 @@ function send_pass_restore_code(callback,credentials){
             } else {
                 if(responseData.messages[0]['status'] === "0") {
                     console.log("Message sent successfully.");
-                    mysqlPool.query(`UPDATE app_users SET restore_code = '${code}' WHERE user_email = '${credentials}' OR user_name = '${credentials}`, (err, result, fields)=>{
-                      if(err)
-                        throw err;
-                    })
                 } else {
                     console.log(`Message failed with error: ${responseData.messages[0]['error-text']}`);
                 } 
             }
           })
+          mysqlPool.query(`UPDATE app_users SET restore_code = '${code}' WHERE user_email = '${credentials}' OR user_name = '${credentials}`, (err, result, fields)=>{
+            if(err)
+              throw err;
+          })
+
           callback(error, {
             status : "OK",
             message: "SMS with restore code has been sent",
