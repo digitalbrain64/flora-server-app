@@ -6,13 +6,22 @@ const database = require('./database_functions');
 
 // route to get location history from device_location_history
 router.get('/getLocationHistory', (req, res, next)=>{
-  console.log(`#########\nfetching location history:\ndevice_sn: ${req.query.device_sn}\nfrom_date: ${req.query.from_date}\nto_date: ${req.query.to_date}`);
-  database.get_location_history(function (err, results) {
-    if (err) console.log("Database error!");
+  if(!req.query.device_sn || !req.query.from_date || !req.query.to_date){
+    res.send({
+      status : "error",
+      message : "please provide parameters: device id, from date, to date"
+    })
+  }
+  database.get_location_history(function (err, result) {
+    if (err)
+        res.send({
+          status : "error",
+          message : err
+        })
     else {
-        res.send(JSON.stringify(results));
-        console.log(`results found: ${results.length}\n#########`);
-        next();
+        res.send(result);
+        console.log(`results found: ${result.length}\n#########`);
+        
     }
   },req.query.device_sn, req.query.from_date, req.query.to_date);
 });
@@ -20,11 +29,11 @@ router.get('/getLocationHistory', (req, res, next)=>{
 // route to get recent data from device_cache_data
 router.get('/getDataFromCache', (req, res, next) =>{
   console.log("fetching data for device_sn: "+req.query.device_sn);
-  database.get_user_data_from_cache(function (err, results) {
+  database.get_user_data_from_cache(function (err, result) {
       if (err)
         console.log("Database error!");
       else
-        res.send(JSON.stringify(results[0]));
+        res.send(result);
       next();
   }, req.query.device_sn);
 });
@@ -50,14 +59,14 @@ router.get('/getUserData', (req, res, next)=>{
 });
 
 router.get('/getWeatherUpdate', (req, res, next)=>{
-  database.get_weather_update(function(err, results){
+  database.get_weather_update(function(err, result){
     if(err)
       res.send({
         status : "error",
         message : err
       });
     else
-      res.send(results);
+      res.send(result);
     next();
   }, req.query.lat, req.query.lng)
 })
@@ -130,7 +139,46 @@ router.get('/passChange', (req, res, next)=>{
   },user_email, newPass)
 })
 
-router.get('/getHighestLowestPulse', (req, res, next)=>{
+router.get('/getLowestPulse', (req, res, next)=>{
+  if(!req.query.id){
+    res.send({
+      status : "error",
+      message : "please provide device id"
+    })
+  }
+  else{
+    database.get_lowest_pulse(function(err, result){
+      if(err)
+        res.send({
+          status : "error",
+          message : err
+        });
+      else
+        res.send(result);
+    },req.query.id)
+  }
+  
+})
+
+router.get('/getHighestPulse', (req, res, next)=>{
+  if(!req.query.id){
+    res.send({
+      status : "error",
+      message : "please provide device id"
+    })
+  }
+  else{
+    database.get_highest_pulse(function(err, result){
+      if(err)
+        res.send({
+          status : "error",
+          message : err
+        });
+      else
+        res.send(result);
+    },req.query.id)
+  }
+  
 })
 
 module.exports = router;

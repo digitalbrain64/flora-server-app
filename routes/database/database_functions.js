@@ -38,6 +38,7 @@ function update_device_cache_data(jsonObj,ip){
 
   add_row_to_realtime_data(jsonObj, log_time);
 
+
   device_post_counter++;
     // check after 6sec if lastUpdateTime == updateTime then NO new POST requests from end point: device is off
     // else: device is on
@@ -160,12 +161,22 @@ var set_device_status = (device_sn,deviceStatus)=>{
 }
 
 // serving the latest data from device cache data
-function get_user_data_from_cache(callback, device_sn){
+function get_data_from_cache(callback, device_sn){
   mysqlPool.query(`SELECT * FROM device_cache_data WHERE device_sn = ${device_sn}`, function (error, result, fields) {
       if (error){ 
-          throw error;
+         return callback(error,result);
       }
-      return callback(error,result); // return callback function
+      else{
+        if(result.length == 0){
+          callback(error, {
+            status : "error",
+            message : `no cache data for device_id : ${device_sn}`
+          })
+        }
+        else{
+          callback(error,result);
+        }
+      }
   });
 }
 
@@ -182,17 +193,17 @@ function get_user(callback, credentials, password){
   
     mysqlPool.query(sql, function(error, result, fields){
     if(error){
-      throw error;
+      return callback(error, result);
     }
     else{
       if(result.length == 0){
-        return callback(error, {
+          callback(error, {
           status : "error",
           message : "user not found"
         })
       }
       else{
-        return callback(error, result); 
+          callback(error, result); 
       }
     }
   })
@@ -203,9 +214,19 @@ function get_location_history(callback,device_sn, from_date, to_date){
   var sql = `SELECT * FROM device_location_history WHERE device_sn = ${device_sn} AND log_time >= '${from_date}' AND log_time <= '${to_date}'`
   mysqlPool.query(sql, function(error, result, fields){
     if(error){
-      throw error;
+      return callback(error, result);
     }
-      return callback(error, result); // return callback function
+    else{
+      if(result.length == 0){
+        callback(error,{
+          status : "error",
+          message : `no history records - device_id : ${device_sn}, from date: ${from_date}, to date: ${to_date}`
+        });
+      }
+      else{
+        callback(error, result);
+      }
+    }  
   });
 }
 
@@ -213,13 +234,13 @@ function get_weather_update(callback,lat,lng){
   var url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&appid=${openWeatherApiKey}`;
   request(url, (error, response, body)=>{
     if(!error && response.statusCode === 200){
-      return callback(error, JSON.stringify(body));
+        callback(error, body);
     }
     else
-      return callback(error, {
-        status : "error",
-        message : error
-      })
+        callback(error, {
+          status : "error",
+          message : JSON.parse(body).message
+        })
   });
 }
 
@@ -230,7 +251,7 @@ function post_sos_report(reportObj){
   // get current lat lng from cache by device_sn
   mysqlPool.query(`SELECT * FROM device_cache_data WHERE device_sn = ${device_sn}`, function (error, result, fields) {
     if (error){ 
-        throw error;
+        return callback(error, result);
     }
     var lat = result.latitude, lng = result.longitude;
     var pulse = result.pulse;
@@ -257,7 +278,7 @@ function send_pass_restore_code(callback,credentials){
     }
     mysqlPool.query(sql, function(error, result, fields){
       if(error){
-        throw error;
+        return callback(error, result);
       }
       else{
         if(result.length != 0){
@@ -284,7 +305,7 @@ function send_pass_restore_code(callback,credentials){
             } else {
                 if(responseData.messages[0]['status'] === "0") {
                     console.log("Message sent successfully.");
-                    mysqlPool.query(`UPDATE app_users SET restore_code = '${code}' WHERE user_email = '${credentials}'`, (err, result, fields)=>{
+                    mysqlPool.query(`UPDATE app_users SET restore_code = '${code}' WHERE user_email = '${credentials}' OR user_name = '${credentials}`, (err, result, fields)=>{
                       if(err)
                         throw err;
                     })
@@ -303,7 +324,7 @@ function send_pass_restore_code(callback,credentials){
         else{
           callback(error, {
             status : "error",
-            message: "no user found",
+            message: `user with credentials ${credentials} not found`,
           })
         }
       }
@@ -315,7 +336,7 @@ function send_pass_restore_code(callback,credentials){
 function check_restore_code(callback,email,res_code){
   mysqlPool.query(`SELECT * FROM app_users WHERE user_email = '${email}' AND restore_code = '${res_code}'`, (err, result, fields)=>{
     if(err)
-      throw err;
+      return callback(error, result);
     else{
       if(result.length == 0){
         callback(err, {
@@ -341,7 +362,7 @@ function change_user_pass(callback,email,new_pass){
   restore_code = NULL
   WHERE user_email = '${email}'`, (err, result, fields)=>{
     if(err)
-      throw err;
+      return callback(err, result);
     else{
       if(result.affectedRows == 0){
         callback(err, {
@@ -360,14 +381,66 @@ function change_user_pass(callback,email,new_pass){
   })
 }
 
+function get_highest_pulse(callback, device_id){
+  mysqlPool.query(`SELECT device_sn,DATE_FORMAT(log_time, "%Y-%m-%d %H:%m:%s"), MAX(pulse) , latitude, longitude
+  FROM flora_device_data WHERE device_sn = ${device_id}`, function(error, result, fields){
+    if(error)
+       return callback(error, result);
+    else{
+      if(result[0].device_sn == null){
+        callback(error, {
+          status : "error",
+          message : `no data for device id : ${device_id}`
+        })
+      }
+      else{
+        callback(error , {
+          device_sn : result[0].device_sn,
+          log_time : result[0]['DATE_FORMAT(log_time, "%Y-%m-%d %H:%m:%s")'],
+          pulse: result[0]['MAX(pulse)'],
+          latitude: result[0].latitude,
+          longitude: result[0].longitude
+        });
+      }
+    }
+  })
+}
+
+function get_lowest_pulse(callback, device_id){
+  mysqlPool.query(`SELECT device_sn, DATE_FORMAT(log_time, "%Y-%m-%d %H:%m:%s"), MIN(pulse) , latitude, longitude
+  FROM flora_device_data WHERE device_sn = ${device_id}`, function(error, result, fields){
+    if(error)
+       return callback(error, result);
+    else{
+      if(result[0].device_sn == null){
+        callback(error, {
+          status : "error",
+          message : `no data for device id : ${device_id}`
+        })
+      }
+      else{
+        callback(error , {
+          device_sn : result[0].device_sn,
+          log_time : result[0]['DATE_FORMAT(log_time, "%Y-%m-%d %H:%m:%s")'],
+          pulse: result[0]['MIN(pulse)'],
+          latitude: result[0].latitude,
+          longitude: result[0].longitude
+        });
+      }
+    }
+  })
+}
+
 module.exports = {
+  get_highest_pulse,
+  get_lowest_pulse,
   change_user_pass,
   check_restore_code,
   get_pass_restore_code: send_pass_restore_code,
   post_sos_report,
   get_weather_update,
   update_device_cache_data,
-  get_user_data_from_cache,
+  get_user_data_from_cache: get_data_from_cache,
   get_user,
   get_location_history
 };
