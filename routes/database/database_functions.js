@@ -370,10 +370,10 @@ function change_user_pass(callback,email,new_pass){
       return callback(err, result);
     else{
       if(result.affectedRows == 0){
-        callback(err, {
+        callback(err, [{
           status : "error",
           message : "user email not currect - password not changed"
-        })
+        }])
       }
       else{
         callback(err, {
