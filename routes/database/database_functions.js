@@ -376,10 +376,10 @@ function change_user_pass(callback,email,new_pass){
         }])
       }
       else{
-        callback(err, {
+        callback(err, [{
           status : "OK",
           message : "password changed"
-        })
+        }])
       }
       
     }
