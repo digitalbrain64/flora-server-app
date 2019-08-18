@@ -168,10 +168,10 @@ function get_data_from_cache(callback, device_sn){
       }
       else{
         if(result.length == 0){
-          callback(error, {
+          callback(error, [{
             status : "error",
             message : `no cache data for device_id : ${device_sn}`
-          })
+          }])
         }
         else{
           callback(error,result);
@@ -197,10 +197,10 @@ function get_user(callback, credentials, password){
     }
     else{
       if(result.length == 0){
-          callback(error, {
+          callback(error, [{
           status : "error",
           message : "user not found"
-        })
+        }])
       }
       else{
           callback(error, result); 
@@ -218,10 +218,10 @@ function get_location_history(callback,device_sn, from_date, to_date){
     }
     else{
       if(result.length == 0){
-        callback(error,{
+        callback(error,[{
           status : "error",
           message : `no history records - device_id : ${device_sn}, from date: ${from_date}, to date: ${to_date}`
-        });
+        }]);
       }
       else{
         callback(error, result);
@@ -237,10 +237,10 @@ function get_weather_update(callback,lat,lng){
         callback(error, body);
     }
     else
-        callback(error, {
+        callback(error, [{
           status : "error",
           message : JSON.parse(body).message
-        })
+        }])
   });
 }
 
@@ -319,18 +319,18 @@ function send_pass_restore_code(callback,credentials){
             }
           })
 
-          callback(error, {
+          callback(error, [{
             status : "OK",
             message: "SMS with restore code has been sent",
             phone_number : result[0].user_contact_number,
             email : result[0].user_email
-          });
+          }]);
         }
         else{
-          callback(error, {
+          callback(error, [{
             status : "error",
             message: `user with credentials ${credentials} not found`,
-          })
+          }])
         }
       }
         

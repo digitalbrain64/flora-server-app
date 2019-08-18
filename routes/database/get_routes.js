@@ -7,17 +7,17 @@ const database = require('./database_functions');
 // route to get location history from device_location_history
 router.get('/getLocationHistory', (req, res, next)=>{
   if(!req.query.device_sn || !req.query.from_date || !req.query.to_date){
-    res.send({
+    res.send([{
       status : "error",
       message : "please provide parameters: device id, from date, to date"
-    })
+    }])
   }
   database.get_location_history(function (err, result) {
     if (err)
-        res.send({
+        res.send([{
           status : "error",
           message : err
-        })
+        }])
     else {
         res.send(result);
         console.log(`results found: ${result.length}\n#########`);
@@ -41,17 +41,17 @@ router.get('/getDataFromCache', (req, res, next) =>{
 // route to get user from app_users
 router.get('/getUserData', (req, res, next)=>{
     if(!req.query.p && !req.query.u)
-      res.send({
+      res.send([{
         status : "error",
         message : "please provide password and username/email"
-      })
+      }])
     else{
       database.get_user(function(err, results){
         if(err)
-          res.send({
+          res.send([{
             status : "error",
             message : err
-          })
+          }])
         else
           res.send(results);
       }, req.query.u, req.query.p)
@@ -61,10 +61,10 @@ router.get('/getUserData', (req, res, next)=>{
 router.get('/getWeatherUpdate', (req, res, next)=>{
   database.get_weather_update(function(err, result){
     if(err)
-      res.send({
+      res.send([{
         status : "error",
         message : err
-      });
+      }]);
     else
       res.send(result);
     next();
@@ -79,18 +79,18 @@ router.get('/getWeatherUpdate', (req, res, next)=>{
 // adding the code to the user in the database
 router.get('/sendRestoreCode', (req, res, next)=>{
   if(!req.query.u){
-    res.send({
+    res.send([{
       status:"error",
       message:"missing username/email"
-    })
+    }])
   }
   else{
     database.send_pass_restore_code(function(err, result){
       if(err)
-        res.send({
+        res.send([{
           status : "error",
           message : err
-        })
+        }])
       else
         res.send(result)
     },req.query.u);
@@ -107,10 +107,10 @@ router.get('/checkRestoreCode', (req, res, next)=>{
 
   database.check_restore_code(function(err, result){
     if(err)
-      res.send({
+      res.send([{
         status : "error",
         message : err
-      })
+      }])
     else
       res.send(result)
   },email,code)
@@ -123,10 +123,10 @@ router.get('/passChange', (req, res, next)=>{
   var user_email = req.query.e;
   database.change_user_pass(function(err, result){
     if(err)
-      res.send({
+      res.send([{
         status : "error",
         message : err
-      })
+      }])
       else{
         res.send(result)
       }
@@ -135,18 +135,18 @@ router.get('/passChange', (req, res, next)=>{
 
 router.get('/getLowestPulse', (req, res, next)=>{
   if(!req.query.id){
-    res.send({
+    res.send([{
       status : "error",
       message : "please provide device id"
-    })
+    }])
   }
   else{
     database.get_lowest_pulse(function(err, result){
       if(err)
-        res.send({
+        res.send([{
           status : "error",
           message : err
-        });
+        }]);
       else
         res.send(result);
     },req.query.id)
@@ -156,18 +156,18 @@ router.get('/getLowestPulse', (req, res, next)=>{
 
 router.get('/getHighestPulse', (req, res, next)=>{
   if(!req.query.id){
-    res.send({
+    res.send([{
       status : "error",
       message : "please provide device id"
-    })
+    }])
   }
   else{
     database.get_highest_pulse(function(err, result){
       if(err)
-        res.send({
+        res.send([{
           status : "error",
           message : err
-        });
+        }]);
       else
         res.send(result);
     },req.query.id)
