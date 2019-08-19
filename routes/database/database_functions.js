@@ -344,17 +344,17 @@ function check_restore_code(callback,email,res_code){
       return callback(error, result);
     else{
       if(result.length == 0){
-        callback(err, {
+        callback(err, [{
           status : "error",
           message : "no user found/restore code not correct"
-        });
+        }]);
       }
       else{
-        callback(err, {
+        callback(err, [{
           status : "OK",
           message :"validation successful",
           email : result[0].user_email
-        });
+        }]);
       }
     }
   })
