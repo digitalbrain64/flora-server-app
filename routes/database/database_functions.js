@@ -47,12 +47,19 @@ function update_device_cache_data(jsonObj){
 
     //console.log(jsonObj.avg_speed, jsonObj.distance);
 
-    
+    var lat = jsonObj.latitude;
+    var lon = jsonObj.longitude;
+    var latArr = (lat).split(' ');
+    var lonArr = (lon).split(' ');
+
+    var latFormat = parseInt(latArr[0])+(parseFloat(latArr[1])/60);
+    var lonFormat = parseInt(lonArr[0])+(parseFloat(lonArr[1])/60);
+
     var sql = `UPDATE device_cache_data
                SET log_time="${updateTime}",
                device_status=1,
-               latitude="${parseFloat(jsonObj.latitude)/100}",
-               longitude="${parseFloat(jsonObj.longitude)/100}",
+               latitude="${latFormat}",
+               longitude="${lonFormat}",
                sats="${jsonObj.satellites}",
                pulse="${jsonObj.pulse}",
                battery="${jsonObj.battery}",
