@@ -109,8 +109,8 @@ function calcAvgSpeed(jsonObj, time_stamp){
       console.log( distance.toFixed(3)+'km', avgSpeedKmh.toFixed(3)+'km/h');
 
       mysqlPool.query(`UPDATE device_cache_data 
-      SET avg_speed="${avgSpeedKmh.toFixed(3)}",
-      distance="${distance.toFixed(3)}"
+      SET avg_speed="${avgSpeedKmh.toFixed(2)}",
+      distance="${distance.toFixed(2)}"
       WHERE device_sn=${jsonObj.GSTSerial}`, function(err, result, fields){
         if(err)
           throw err;
