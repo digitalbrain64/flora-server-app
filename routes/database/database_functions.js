@@ -40,7 +40,7 @@ function update_device_cache_data(jsonObj){
         set_device_status(jsonObj.GSTSerial, 0); // 0 - off
         console.log(`device id: ${jsonObj.GSTSerial} - offline`);
       }
-    },8000); // 8 sec
+    },10000); // 8 sec
 
     // setting the lastUpdateTime to current updateTime
     lastUpdateTime = updateTime;
@@ -56,6 +56,9 @@ function update_device_cache_data(jsonObj){
 
     var latFormat = parseInt(latDeg)+(parseFloat(latMin)/60);
     var lonFormat = parseInt(lonDeg)+(parseFloat(lonMin)/60);
+
+    console.log(latFormat, lonFormat);
+    
 
     var sql = `UPDATE device_cache_data
                SET log_time="${updateTime}",
@@ -98,8 +101,15 @@ function calcAvgSpeed(jsonObj, time_stamp){
     if(err)
       throw err;
     else{
-      var curr_lat = jsonObj.latitude;
-      var curr_lon = jsonObj.longitude;
+      var lat = jsonObj.latitude;
+      var lon = jsonObj.longitude;
+      var latDeg = lat.slice(0, 2);
+      var latMin = lat.slice(2, );
+      var lonDeg = lon.slice(0, 2);
+      var lonMin = lon.slice(2, );
+
+      var curr_lat = parseInt(latDeg)+(parseFloat(latMin)/60);
+      var curr_lon = parseInt(lonDeg)+(parseFloat(lonMin)/60);
       var curr_time_stamp = new Date(time_stamp);
 
       var prev_lat = result[0].latitude;
