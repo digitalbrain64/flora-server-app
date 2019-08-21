@@ -49,11 +49,13 @@ function update_device_cache_data(jsonObj){
 
     var lat = jsonObj.latitude;
     var lon = jsonObj.longitude;
-    var latArr = (lat).split(' ');
-    var lonArr = (lon).split(' ');
+    var latDeg = lat.slice(0, 2);
+    var latMin = lat.slice(2, );
+    var lonDeg = lon.slice(0, 2);
+    var lonMin = lon.slice(2, );
 
-    var latFormat = parseInt(latArr[0])+(parseFloat(latArr[1])/60);
-    var lonFormat = parseInt(lonArr[0])+(parseFloat(lonArr[1])/60);
+    var latFormat = parseInt(latDeg)+(parseFloat(latMin)/60);
+    var lonFormat = parseInt(lonDeg)+(parseFloat(lonMin)/60);
 
     var sql = `UPDATE device_cache_data
                SET log_time="${updateTime}",
@@ -96,8 +98,8 @@ function calcAvgSpeed(jsonObj, time_stamp){
     if(err)
       throw err;
     else{
-      var curr_lat = parseFloat(jsonObj.latitude)/100;
-      var curr_lon = parseFloat(jsonObj.longitude)/100;
+      var curr_lat = jsonObj.latitude;
+      var curr_lon = jsonObj.longitude;
       var curr_time_stamp = new Date(time_stamp);
 
       var prev_lat = result[0].latitude;
