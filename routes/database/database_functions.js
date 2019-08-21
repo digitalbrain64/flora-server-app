@@ -29,9 +29,8 @@ function update_device_cache_data(jsonObj){
   log_time = date.toISOString().slice(0, 19).replace('T', ' ');
   var updateTime = log_time;
 
-  add_row_to_realtime_data(jsonObj, log_time);
-
   calcAvgSpeed(jsonObj, log_time);
+  add_row_to_realtime_data(jsonObj, log_time);
 
   device_post_counter++;
     // check after 6sec if lastUpdateTime == updateTime then NO new POST requests from end point: device is off
@@ -46,6 +45,9 @@ function update_device_cache_data(jsonObj){
     // setting the lastUpdateTime to current updateTime
     lastUpdateTime = updateTime;
 
+    //console.log(jsonObj.avg_speed, jsonObj.distance);
+
+    
     var sql = `UPDATE device_cache_data
                SET log_time="${updateTime}",
                device_status=1,
@@ -57,9 +59,7 @@ function update_device_cache_data(jsonObj){
                gps_status="${jsonObj.gps_status}",
                bt_status="${jsonObj.bt_status}",
                gsm_status="${jsonObj.gsm_status}",
-               sos_status=${jsonObj.sos_status},
-               avg_speed=0.0,
-               distance=0.0
+               sos_status=${jsonObj.sos_status}
                WHERE device_sn=${jsonObj.GSTSerial};`;
 
     mysqlPool.query(sql, function (err, result) {
@@ -104,16 +104,19 @@ function calcAvgSpeed(jsonObj, time_stamp){
       var distance = getDistanceFromLatLonInKm(prev_lat, prev_lon, curr_lat, curr_lon);
 
       var timeDiffSec = (Math.abs(curr_time_stamp - prev_time_stamp))/1000;
-      console.log(timeDiffSec);
-      
 
-      var avgSpeedKmh = (distance/timeDiffSec).toFixed(8)*3600
-      console.log( distance+'km', avgSpeedKmh+'km/h');
+      var avgSpeedKmh = (distance/timeDiffSec)*3600
+      console.log( distance.toFixed(3)+'km', avgSpeedKmh.toFixed(3)+'km/h');
 
-
-      //console.log(typeof(curr_time_stamp));
-      //console.log(typeof(prev_time_stamp));
-      //console.log(d);
+      mysqlPool.query(`UPDATE device_cache_data 
+      SET avg_speed="${avgSpeedKmh.toFixed(3)}",
+      distance="${distance.toFixed(3)}"
+      WHERE device_sn=${jsonObj.GSTSerial}`, function(err, result, fields){
+        if(err)
+          throw err;
+        else
+          console.log("speed and distance added");
+      });
     }
   })
 }
