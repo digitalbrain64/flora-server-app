@@ -20,24 +20,18 @@ var log_time;
 
 var device_post_counter = 0;
 
-var ipLocationApiAccessKey = "access_key=ffeeaec15d17aabd228c7499107f1830&format=1";
-
-var ipLocationApi = "http://api.ipstack.com/"
-
-var currentIP = '';
-
 // API key for openweathermap API
 var openWeatherApiKey = "dd600a6f3524bad742db42efe5147d7e";
 
 // function for updating device cache data to the most current and updated data about the device
-function update_device_cache_data(jsonObj,ip){
-  currentIP = ip;
+function update_device_cache_data(jsonObj){
   var date = new Date();
   log_time = date.toISOString().slice(0, 19).replace('T', ' ');
   var updateTime = log_time;
 
   add_row_to_realtime_data(jsonObj, log_time);
 
+  calcAvgSpeed(jsonObj, log_time);
 
   device_post_counter++;
     // check after 6sec if lastUpdateTime == updateTime then NO new POST requests from end point: device is off
@@ -52,14 +46,6 @@ function update_device_cache_data(jsonObj,ip){
     // setting the lastUpdateTime to current updateTime
     lastUpdateTime = updateTime;
 
-    // var current_latlng = {
-    //   source : 'gps',
-    //   lat : parseFloat(jsonObj.latitude)/100,
-    //   lng : parseFloat(jsonObj.longitude)/100
-    // }
-
-    // current_latlng = check_location_fix(current_latlng);
-
     var sql = `UPDATE device_cache_data
                SET log_time="${updateTime}",
                device_status=1,
@@ -70,7 +56,10 @@ function update_device_cache_data(jsonObj,ip){
                battery="${jsonObj.battery}",
                gps_status="${jsonObj.gps_status}",
                bt_status="${jsonObj.bt_status}",
-               gsm_status="${jsonObj.gsm_status}"
+               gsm_status="${jsonObj.gsm_status}",
+               sos_status=${jsonObj.sos_status},
+               avg_speed=0.0,
+               distance=0.0
                WHERE device_sn=${jsonObj.GSTSerial};`;
 
     mysqlPool.query(sql, function (err, result) {
@@ -92,6 +81,41 @@ function update_device_cache_data(jsonObj,ip){
       });
       device_post_counter = 0;
    }
+}
+
+function calcAvgSpeed(jsonObj, time_stamp){
+  // get prevoius coordinates
+  mysqlPool.query(`SELECT * FROM device_cache_data WHERE device_sn=${jsonObj.GSTSerial}`, function(err, result, fields){
+    if(err)
+      throw err;
+    else{
+      var curr_lat = parseFloat(jsonObj.latitude)/100;
+      var curr_lon = parseFloat(jsonObj.longitude)/100;
+      var curr_time_stamp = new Date(time_stamp);
+
+      var prev_lat = result[0].latitude;
+      var prev_lon = result[0].longitude;
+      var prev_time_stamp = new Date(result[0].log_time);
+      // Split timestamp into [ Y, M, D, h, m, s ]
+      //var t = prev_time_stamp.split(/[- :]/);
+            // Apply each element to the Date function
+      //var d = new Date(t[0], t[1]-1, t[2], t[3], t[4], t[5]);
+
+      var distance = getDistanceFromLatLonInKm(prev_lat, prev_lon, curr_lat, curr_lon);
+
+      var timeDiffSec = (Math.abs(curr_time_stamp - prev_time_stamp))/1000;
+      console.log(timeDiffSec);
+      
+
+      var avgSpeedKmh = (distance/timeDiffSec).toFixed(8)*3600
+      console.log( distance+'km', avgSpeedKmh+'km/h');
+
+
+      //console.log(typeof(curr_time_stamp));
+      //console.log(typeof(prev_time_stamp));
+      //console.log(d);
+    }
+  })
 }
 
 /*
@@ -145,9 +169,6 @@ var add_row_to_realtime_data = (floraDataObj, log_time)=>{
   VALUES (${floraDataObj.GSTSerial}, "${log_time}", "${parseFloat(floraDataObj.latitude)/100}", "${parseFloat(floraDataObj.longitude)/100}",${floraDataObj.satellites},${floraDataObj.pulse},${floraDataObj.battery},${floraDataObj.gps_status},${floraDataObj.bt_status},${floraDataObj.gsm_status})`, function(err, result, fields){
     if(err)
       throw err;
-    else{
-      console.log('realtime data added');
-    }
   });
 }
 
@@ -399,13 +420,13 @@ function get_highest_pulse(callback, device_id){
         })
       }
       else{
-        callback(error , {
+        callback(error , [{
           device_sn : result[0].device_sn,
           log_time : result[0]['DATE_FORMAT(log_time, "%Y-%m-%d %H:%m:%s")'],
           pulse: result[0]['MAX(pulse)'],
           latitude: result[0].latitude,
           longitude: result[0].longitude
-        });
+        }]);
       }
     }
   })
@@ -434,6 +455,26 @@ function get_lowest_pulse(callback, device_id){
       }
     }
   })
+}
+
+
+
+function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+  var R = 6371; // Radius of the earth in km
+  var dLat = deg2rad(lat2-lat1);  // deg2rad below
+  var dLon = deg2rad(lon2-lon1); 
+  var a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2)
+    ; 
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+  var d = R * c; // Distance in km
+  return d;
+}
+
+function deg2rad(deg) {
+  return deg * (Math.PI/180)
 }
 
 module.exports = {
