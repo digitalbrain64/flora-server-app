@@ -27,9 +27,9 @@ router.get('/getLocationHistory', (req, res, next)=>{
 });
 
 // route to get recent data from device_cache_data
-router.get('/getDataFromCache', (req, res, next) =>{
+router.get('/getDeviceUpdates', (req, res, next) =>{
   if(req.query.device_sn){
-    database.get_user_data_from_cache(function (err, result) {
+    database.get_device_updates(function (err, result) {
       if (err){
         res.send([{
           status : "error",
@@ -49,7 +49,7 @@ router.get('/getDataFromCache', (req, res, next) =>{
 });
 
 // route to get user from app_users
-router.get('/getUserData', (req, res, next)=>{
+router.get('/getAppUserData', (req, res, next)=>{
     if(req.query.p && req.query.u){
       database.get_user(function(err, results){
         if(err)
@@ -79,7 +79,6 @@ router.get('/getWeatherUpdate', (req, res, next)=>{
         }]);
       else
         res.send(result);
-      next();
     }, req.query.lat, req.query.lng)
   }
   else{
@@ -91,10 +90,8 @@ router.get('/getWeatherUpdate', (req, res, next)=>{
   
 })
 
-
-
 /* password restore routes */
-// 1 : getting email or username of the user
+// step 1 : getting email or username of the user
 // checking whats the phone number and sending verification code to the number
 // adding the code to the user in the database
 router.get('/sendRestoreCode', (req, res, next)=>{
@@ -118,7 +115,7 @@ router.get('/sendRestoreCode', (req, res, next)=>{
   
 })
 
-// 2 : getting the email and the code entered by the user
+// step 2 : getting the email and the code entered by the user
 // validating the code and email if user exists
 // if all went well : email sent back to client for later use in the final step
 router.get('/checkRestoreCode', (req, res, next)=>{
@@ -141,7 +138,7 @@ router.get('/checkRestoreCode', (req, res, next)=>{
   }
 })
 
-// 3 : sending the new password and email from previous step
+// step 3 : sending the new password and email from previous step
 // updating the password and removing the restore_code from user in database
 router.get('/passChange', (req, res, next)=>{
   if(req.query.newPass && req.query.e){

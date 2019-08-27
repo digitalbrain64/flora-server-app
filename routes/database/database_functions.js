@@ -23,123 +23,6 @@ var device_post_counter = 0;
 // API key for openweathermap API
 var openWeatherApiKey = "dd600a6f3524bad742db42efe5147d7e";
 
-// function for updating device cache data to the most current and updated data about the device
-function update_device_cache_data(jsonObj){
-  var date = new Date();
-  log_time = date.toISOString().slice(0, 19).replace('T', ' ');
-  var updateTime = log_time;
-
-  calcAvgSpeed(jsonObj, log_time);
-  add_row_to_realtime_data(jsonObj, log_time);
-
-  device_post_counter++;
-    // check after 6sec if lastUpdateTime == updateTime then NO new POST requests from end point: device is off
-    // else: device is on
-    setTimeout(function(){
-      if(lastUpdateTime.localeCompare(updateTime) == 0){
-        set_device_status(jsonObj.GSTSerial, 0); // 0 - off
-        console.log(`device id: ${jsonObj.GSTSerial} - offline`);
-      }
-    },10000); // 8 sec
-
-    // setting the lastUpdateTime to current updateTime
-    lastUpdateTime = updateTime;
-
-    //console.log(jsonObj.avg_speed, jsonObj.distance);
-
-    var lat = jsonObj.latitude;
-    var lon = jsonObj.longitude;
-    var latDeg = lat.slice(0, 2);
-    var latMin = lat.slice(2, );
-    var lonDeg = lon.slice(0, 2);
-    var lonMin = lon.slice(2, );
-
-    var latFormat = parseInt(latDeg)+(parseFloat(latMin)/60);
-    var lonFormat = parseInt(lonDeg)+(parseFloat(lonMin)/60);
-
-    console.log(latFormat, lonFormat);
-    
-
-    var sql = `UPDATE device_cache_data
-               SET log_time="${updateTime}",
-               device_status=1,
-               latitude="${latFormat}",
-               longitude="${lonFormat}",
-               sats="${jsonObj.satellites}",
-               pulse="${jsonObj.pulse}",
-               battery="${jsonObj.battery}",
-               gps_status="${jsonObj.gps_status}",
-               bt_status="${jsonObj.bt_status}",
-               gsm_status="${jsonObj.gsm_status}",
-               sos_status=${jsonObj.sos_status}
-               WHERE device_sn=${jsonObj.GSTSerial};`;
-
-    mysqlPool.query(sql, function (err, result) {
-      if (err) 
-         throw err;
-      console.log(`device id: ${jsonObj.GSTSerial} - online`);
-      console.log(`device id: ${jsonObj.GSTSerial} - cache data updated`);
-    });
-
-    // if 5min has passed -> insert record to device_location_history
-    if(device_post_counter == 50){
-      var sql = `INSERT INTO 
-      device_location_history (device_sn ,log_time, latitude, longitude ,pulse) 
-      VALUES (${jsonObj.GSTSerial},"${log_time}","${parseFloat(jsonObj.latitude)/100}","${parseFloat(jsonObj.longitude)/100}","${jsonObj.pulse}");`;
-      mysqlPool.query(sql, function (err, result) {
-        if (err) 
-           throw err;
-        console.log(`device id: ${jsonObj.GSTSerial} - location history record inserted`);
-      });
-      device_post_counter = 0;
-   }
-}
-
-function calcAvgSpeed(jsonObj, time_stamp){
-  // get prevoius coordinates
-  mysqlPool.query(`SELECT * FROM device_cache_data WHERE device_sn=${jsonObj.GSTSerial}`, function(err, result, fields){
-    if(err)
-      throw err;
-    else{
-      var lat = jsonObj.latitude;
-      var lon = jsonObj.longitude;
-      var latDeg = lat.slice(0, 2);
-      var latMin = lat.slice(2, );
-      var lonDeg = lon.slice(0, 2);
-      var lonMin = lon.slice(2, );
-
-      var curr_lat = parseInt(latDeg)+(parseFloat(latMin)/60);
-      var curr_lon = parseInt(lonDeg)+(parseFloat(lonMin)/60);
-      var curr_time_stamp = new Date(time_stamp);
-
-      var prev_lat = result[0].latitude;
-      var prev_lon = result[0].longitude;
-      var prev_time_stamp = new Date(result[0].log_time);
-      // Split timestamp into [ Y, M, D, h, m, s ]
-      //var t = prev_time_stamp.split(/[- :]/);
-            // Apply each element to the Date function
-      //var d = new Date(t[0], t[1]-1, t[2], t[3], t[4], t[5]);
-
-      var distance = getDistanceFromLatLonInKm(prev_lat, prev_lon, curr_lat, curr_lon);
-
-      var timeDiffSec = (Math.abs(curr_time_stamp - prev_time_stamp))/1000;
-
-      var avgSpeedKmh = (distance/timeDiffSec)*3600
-      console.log( distance.toFixed(3)+'km', avgSpeedKmh.toFixed(3)+'km/h');
-
-      mysqlPool.query(`UPDATE device_cache_data 
-      SET avg_speed="${avgSpeedKmh.toFixed(2)}",
-      distance=${distance.toFixed(3)}
-      WHERE device_sn=${jsonObj.GSTSerial}`, function(err, result, fields){
-        if(err)
-          throw err;
-        else
-          console.log("speed and distance added");
-      });
-    }
-  })
-}
-
 /*
 // handle gps module incorrect latitude/longitude data
 function check_location_fix(current_latlng){
@@ -186,26 +69,81 @@ function check_location_fix(current_latlng){
 }
 */
 
-var add_row_to_realtime_data = (floraDataObj, log_time)=>{
-  mysqlPool.query(`INSERT INTO flora_device_data (device_sn ,log_time ,latitude, longitude, satellites, pulse, battery, gps_status, bt_status, gsm_status)
-  VALUES (${floraDataObj.GSTSerial}, "${log_time}", "${parseFloat(floraDataObj.latitude)/100}", "${parseFloat(floraDataObj.longitude)/100}",${floraDataObj.satellites},${floraDataObj.pulse},${floraDataObj.battery},${floraDataObj.gps_status},${floraDataObj.bt_status},${floraDataObj.gsm_status})`, function(err, result, fields){
-    if(err)
-      throw err;
-  });
-}
+// function for updating device cache data to the most current and updated data about the device
+function update_device_cache_data(jsonObj){
+  var date = new Date();
+  log_time = date.toISOString().slice(0, 19).replace('T', ' ');
+  var updateTime = log_time;
 
-// change device status off/on (0/1)
-var set_device_status = (device_sn,deviceStatus)=>{
-    var sql = `UPDATE device_cache_data SET device_status = ${deviceStatus} WHERE device_sn = ${device_sn}`;
+  calcAvgSpeed(jsonObj, log_time);
+  add_row_to_realtime_data(jsonObj, log_time);
+
+  device_post_counter++;
+    // check after 6sec if lastUpdateTime == updateTime then NO new POST requests from end point: device is off
+    // else: device is on
+    setTimeout(function(){
+      if(lastUpdateTime.localeCompare(updateTime) == 0){
+        set_device_status(jsonObj.GSTSerial, 0); // 0 - off
+        console.log(`device id: ${jsonObj.GSTSerial} - offline`);
+      }
+    },10000); // 8 sec
+
+    // setting the lastUpdateTime to current updateTime
+    lastUpdateTime = updateTime;
+
+    //console.log(jsonObj.avg_speed, jsonObj.distance);
+
+    var lat = jsonObj.latitude;
+    var lon = jsonObj.longitude;
+    var latDeg = lat.slice(0, 2);
+    var latMin = lat.slice(2, );
+    var lonDeg = lon.slice(0, 2);
+    var lonMin = lon.slice(2, );
+
+    var latFormat = parseInt(latDeg)+(parseFloat(latMin)/60);
+    var lonFormat = parseInt(lonDeg)+(parseFloat(lonMin)/60);
+
+    console.log(latFormat, lonFormat);
+    
+
+    var sql = `UPDATE devices_cache_data
+               SET log_time="${updateTime}",
+               device_status=1,
+               latitude="${latFormat}",
+               longitude="${lonFormat}",
+               sats="${jsonObj.satellites}",
+               pulse="${jsonObj.pulse}",
+               battery="${jsonObj.battery}",
+               gps_status="${jsonObj.gps_status}",
+               bt_status="${jsonObj.bt_status}",
+               gsm_status="${jsonObj.gsm_status}",
+               sos_status=${jsonObj.sos_status}
+               WHERE device_sn=${jsonObj.GSTSerial};`;
+
     mysqlPool.query(sql, function (err, result) {
+      if (err) 
+         throw err;
+      console.log(`device id: ${jsonObj.GSTSerial} - online`);
+      console.log(`device id: ${jsonObj.GSTSerial} - cache data updated`);
+    });
+
+    // if 5min has passed -> insert record to device_location_history
+    if(device_post_counter == 50){
+      var sql = `INSERT INTO 
+      devices_location_history (device_sn ,log_time, latitude, longitude ,pulse) 
+      VALUES (${jsonObj.GSTSerial},"${log_time}","${parseFloat(jsonObj.latitude)/100}","${parseFloat(jsonObj.longitude)/100}","${jsonObj.pulse}");`;
+      mysqlPool.query(sql, function (err, result) {
         if (err) 
            throw err;
-    });
+        console.log(`device id: ${jsonObj.GSTSerial} - location history record inserted`);
+      });
+      device_post_counter = 0;
+   }
 }
 
 // serving the latest data from device cache data
-function get_data_from_cache(callback, device_sn){
-  mysqlPool.query(`SELECT * FROM device_cache_data WHERE device_sn = ${device_sn}`, function (error, result, fields) {
+function get_device_updates(callback, device_sn){
+  mysqlPool.query(`SELECT * FROM devices_cache_data WHERE device_sn = ${device_sn}`, function (error, result, fields) {
       if (error){ 
          return callback(error,result);
       }
@@ -254,7 +192,7 @@ function get_user(callback, credentials, password){
 
 // fetching location history
 function get_location_history(callback,device_sn, from_date, to_date){
-  var sql = `SELECT * FROM device_location_history WHERE device_sn = ${device_sn} AND log_time >= '${from_date}' AND log_time <= '${to_date}'`
+  var sql = `SELECT * FROM devices_location_history WHERE device_sn = ${device_sn} AND log_time >= '${from_date}' AND log_time <= '${to_date}'`
   mysqlPool.query(sql, function(error, result, fields){
     if(error){
       return callback(error, result);
@@ -287,12 +225,11 @@ function get_weather_update(callback,lat,lng){
   });
 }
 
-
 function post_sos_report(reportObj){
   var report_date = new Date();
   var report_log_time = report_date.toISOString().slice(0, 19).replace('T', ' ');
   // get current lat lng from cache by device_sn
-  mysqlPool.query(`SELECT * FROM device_cache_data WHERE device_sn = ${device_sn}`, function (error, result, fields) {
+  mysqlPool.query(`SELECT * FROM devices_cache_data WHERE device_sn = ${device_sn}`, function (error, result, fields) {
     if (error){ 
         return callback(error, result);
     }
@@ -429,73 +366,121 @@ function change_user_pass(callback,email,new_pass){
   })
 }
 
+// function returns highest pulse measurements
 function get_highest_pulse(callback, device_id){
-  mysqlPool.query(`SELECT device_sn,DATE_FORMAT(log_time, "%Y-%m-%d %H:%m:%s"), MAX(pulse) , latitude, longitude
-  FROM flora_device_data WHERE device_sn = ${device_id}`, function(error, result, fields){
+  mysqlPool.query(`SELECT log_time, latitude, longitude, pulse
+  FROM devices_realtime_data
+  WHERE pulse = (SELECT MAX(pulse) FROM flora_device_data) AND device_sn=${device_id}`, function(error, results, fields){
     if(error)
-       return callback(error, result);
+       return callback(error, results);
     else{
-      if(result[0].device_sn == null){
-        callback(error, {
+      if(results.length == 0){
+        callback(error, [{
           status : "error",
           message : `no data for device id : ${device_id}`
-        })
-      }
-      else{
-        callback(error , [{
-          device_sn : result[0].device_sn,
-          log_time : result[0]['DATE_FORMAT(log_time, "%Y-%m-%d %H:%m:%s")'],
-          pulse: result[0]['MAX(pulse)'],
-          latitude: result[0].latitude,
-          longitude: result[0].longitude
         }]);
       }
+      else{
+        callback(error , results);
+      }
     }
   })
 }
 
+// function returns lowest pulse measurements
 function get_lowest_pulse(callback, device_id){
-  mysqlPool.query(`SELECT device_sn, DATE_FORMAT(log_time, "%Y-%m-%d %H:%m:%s"), MIN(pulse) , latitude, longitude
-  FROM flora_device_data WHERE device_sn = ${device_id}`, function(error, result, fields){
+  mysqlPool.query(`SELECT log_time, latitude, longitude, pulse
+  FROM devices_realtime_data
+  WHERE pulse = (SELECT MIN(pulse) FROM flora_device_data) AND device_sn=${device_id}`, function(error, results, fields){
     if(error)
-       return callback(error, result);
+       return callback(error, results);
     else{
-      if(result[0].device_sn == null){
-        callback(error, {
+      if(results.length == 0){
+        callback(error, [{
           status : "error",
           message : `no data for device id : ${device_id}`
-        })
+        }])
       }
       else{
-        callback(error , {
-          device_sn : result[0].device_sn,
-          log_time : result[0]['DATE_FORMAT(log_time, "%Y-%m-%d %H:%m:%s")'],
-          pulse: result[0]['MIN(pulse)'],
-          latitude: result[0].latitude,
-          longitude: result[0].longitude
-        });
+        callback(error , results);
       }
     }
   })
 }
 
+// adds new row to flora_device_data 
+let add_row_to_realtime_data = (floraDataObj, log_time)=>{
+  mysqlPool.query(`INSERT INTO devices_realtime_data (device_sn ,log_time ,latitude, longitude, satellites, pulse, battery, gps_status, bt_status, gsm_status)
+  VALUES (${floraDataObj.GSTSerial}, "${log_time}", "${parseFloat(floraDataObj.latitude)/100}", "${parseFloat(floraDataObj.longitude)/100}",${floraDataObj.satellites},${floraDataObj.pulse},${floraDataObj.battery},${floraDataObj.gps_status},${floraDataObj.bt_status},${floraDataObj.gsm_status})`, function(err, result, fields){
+    if(err)
+      throw err;
+  });
+}
 
+// change device status off/on (0/1)
+let set_device_status = (device_sn,deviceStatus)=>{
+    var sql = `UPDATE devices_cache_data SET device_status = ${deviceStatus} WHERE device_sn = ${device_sn}`;
+    mysqlPool.query(sql, function (err, result) {
+        if (err) 
+           throw err;
+    });
+}
 
-function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+// calculates average speed between two points on a map (lat,lng)
+let calcAvgSpeed = (jsonObj, time_stamp)=>{
+  // get prevoius coordinates
+  mysqlPool.query(`SELECT * FROM devices_cache_data WHERE device_sn=${jsonObj.GSTSerial}`, function(err, result, fields){
+    if(err)
+      throw err;
+    else{
+      var lat = jsonObj.latitude;
+      var lon = jsonObj.longitude;
+      var latDeg = lat.slice(0, 2);
+      var latMin = lat.slice(2, );
+      var lonDeg = lon.slice(0, 2);
+      var lonMin = lon.slice(2, );
+
+      var curr_lat = parseInt(latDeg)+(parseFloat(latMin)/60);
+      var curr_lon = parseInt(lonDeg)+(parseFloat(lonMin)/60);
+      var curr_time_stamp = new Date(time_stamp);
+
+      var prev_lat = result[0].latitude;
+      var prev_lon = result[0].longitude;
+      var prev_time_stamp = new Date(result[0].log_time);
+
+      var distance = getDistanceFromLatLonInKm(prev_lat, prev_lon, curr_lat, curr_lon);
+
+      var timeDiffSec = (Math.abs(curr_time_stamp - prev_time_stamp))/1000;
+
+      var avgSpeedKmh = (distance/timeDiffSec)*3600
+      console.log( distance.toFixed(3)+'km', avgSpeedKmh.toFixed(3)+'km/h');
+
+      mysqlPool.query(`UPDATE devices_cache_data 
+      SET avg_speed="${avgSpeedKmh.toFixed(2)}",
+      distance=${distance.toFixed(3)}
+      WHERE device_sn=${jsonObj.GSTSerial}`, function(err, result, fields){
+        if(err)
+          throw err;
+        else
+          console.log("speed and distance added");
+      });
+    }
+  })
+}
+
+// calculates distance between two points on a map (lat, lng)
+let getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2)=>{
   var R = 6371; // Radius of the earth in km
   var dLat = deg2rad(lat2-lat1);  // deg2rad below
   var dLon = deg2rad(lon2-lon1); 
-  var a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2)
-    ; 
+  var a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2); 
   var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
   var d = R * c; // Distance in km
   return d;
 }
 
-function deg2rad(deg) {
+// return degree latitue/longitude to radian latitude/longitude
+let deg2rad = (deg)=>{
   return deg * (Math.PI/180)
 }
 
@@ -508,7 +493,7 @@ module.exports = {
   post_sos_report,
   get_weather_update,
   update_device_cache_data,
-  get_user_data_from_cache: get_data_from_cache,
+  get_device_updates,
   get_user,
   get_location_history
 };
