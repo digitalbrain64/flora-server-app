@@ -49,7 +49,7 @@ router.get('/getDeviceUpdates', (req, res, next) =>{
 });
 
 // route to get user from app_users
-router.get('/getAppUserData', (req, res, next)=>{
+router.get('/getAppUserAccount', (req, res, next)=>{
     if(req.query.p && req.query.u){
       database.get_user(function(err, results){
         if(err)
@@ -162,7 +162,7 @@ router.get('/passChange', (req, res, next)=>{
 })
 
 router.get('/getLowestPulse', (req, res, next)=>{
-  if(!req.query.id){
+  if(!req.query.device_sn){
     res.send([{
       status : "error",
       message : "please provide device id"
@@ -177,7 +177,7 @@ router.get('/getLowestPulse', (req, res, next)=>{
         }]);
       else
         res.send(result);
-    },req.query.id)
+    },req.query.device_sn)
   }
   
 })
@@ -201,6 +201,71 @@ router.get('/getHighestPulse', (req, res, next)=>{
     },req.query.id)
   }
   
+})
+
+// full device user data including contacts
+router.get('/getDeviceUserFull',(req, res, next)=>{
+  if(!req.query.user_id){
+    res.send([{
+      status : "error",
+      message : "please provide user id"
+    }])
+  }
+  else {
+      database.get_device_users((error, result)=>{
+        if(error){
+          res.send([{
+            status: "error",
+            message: error
+          }])
+        }
+        else{
+          res.send(result);
+        }
+      },req.query.user_id)
+  }
+})
+
+router.get('/getDeviceUser', (req, res, next)=>{
+  if(!req.query.user_id){
+    res.send([{
+      status : "error",
+      message : "please provide user id"
+    }]);
+  }
+  else{
+    database.get_device_users((err, result)=>{
+      if(err){
+        res.send([{
+          status : "error",
+          message : err
+        }]);
+      }
+      else{
+        res.send(result);
+      }
+    },req.query.user_id)
+  }
+})
+
+router.get('/getDeviceUserContacts', (req, res, next)=>{
+  if(!req.query.user_id){
+    res.send([{
+      status : "error",
+      message : "please provide user id"
+    }])
+  }
+  else{
+    database.get_user_contacts((err, result)=>{
+      if(err)
+        res.send([{
+          status:"error",
+          message:err
+        }]);
+      else
+        res.send(result);
+    },req.query.user_id)
+  }
 })
 
 module.exports = router;

@@ -162,7 +162,7 @@ function get_device_updates(callback, device_sn){
 }
 
 // fetching app user information
-function get_user(callback, credentials, password){
+function get_user_account(callback, credentials, password){
   var sql = "";
 
   if(credentials.includes("@"))
@@ -293,10 +293,6 @@ function send_pass_restore_code(callback,credentials){
           mysqlPool.query(`UPDATE app_users SET restore_code = '${code}' WHERE user_email = '${credentials}' OR user_name = '${credentials}'`, (err, result, fields)=>{
             if(err)
               throw err;
-            else{
-              console.log(result);
-              
-            }
           })
 
           callback(error, [{
@@ -408,6 +404,112 @@ function get_lowest_pulse(callback, device_id){
   })
 }
 
+function get_device_users(callback, user_id){
+  if(user_id == 0){
+    mysqlPool.query(`SELECT * FROM device_users`, function(err, results, fields){
+      if(err){
+        return callback(err, results);
+      }
+      else{
+        callback(err, results);
+      }
+    });
+  }
+  else{
+    mysqlPool.query(`SELECT * FROM device_users WHERE user_id = ${user_id}`, function(err, result, fields){
+      if(err){
+        return callback(err, result);
+      }
+      else{
+        if(result.length != 0){
+          callback ( err, result)
+        }
+        else{
+          callback ( err, [{
+            status:"error",
+            message : "user not found"
+          }])
+        }
+      }
+    });
+  }
+}
+
+function get_device_user_full_data(callback, user_id){
+  mysqlPool.query(`SELECT * FROM device_users WHERE user_id = ${user_id}`, function(err, user_rows, fields){
+    if(err){
+      return callback(err, user_rows);
+    }
+    else{
+      if(user_rows.length != 0){
+        mysqlPool.query(`SELECT device_users_contact_relation.relation ,device_users_contacts.contact_first_name, device_users_contacts.contact_last_name, device_users_contacts.contact_address, device_users_contacts.contact_phone_number_1, device_users_contacts.contact_phone_number_2
+        FROM device_users_contacts
+        LEFT JOIN device_users_contact_relation
+        ON device_users_contact_relation.contact_id=device_users_contacts.contact_id
+        WHERE device_users_contact_relation.device_user_id = ${user_rows[0].user_id};`, function(err, result, fields){
+          if(err){
+            return callback(err, result);
+          }
+          else{
+            if(result.length!=0){
+              callback(err, [{
+                user_id: user_id,
+                user_first_name:user_rows[0].user_first_name,
+                user_last_name: user_rows[0].user_last_name,
+                user_address: user_rows[0].user_address,
+                user_phone_number_1:user_rows[0].user_phone_number_1,
+                user_phone_number_2:user_rows[0].user_phone_number_2,
+                user_phone_book: result
+              }])
+            }
+            else{
+              callback(err, [{
+                user_id: user_id,
+                user_first_name:user_rows[0].user_first_name,
+                user_last_name: user_rows[0].user_last_name,
+                user_address: user_rows[0].user_address,
+                user_phone_number_1:user_rows[0].user_phone_number_1,
+                user_phone_number_2:user_rows[0].user_phone_number_2,
+                user_phone_book: "no contacts"
+              }])
+            }
+          }
+        })
+      }
+      else{
+        callback(err, [{
+          status: "error",
+          message : "user not found"
+        }])
+      }
+    }
+  })
+  
+}
+
+function get_user_contacts(callback, user_id){
+  mysqlPool.query(`SELECT device_users_contact_relation.relation ,device_users_contacts.contact_first_name, device_users_contacts.contact_last_name, device_users_contacts.contact_address, device_users_contacts.contact_phone_number_1, device_users_contacts.contact_phone_number_2
+  FROM device_users_contacts
+  LEFT JOIN device_users_contact_relation
+  ON device_users_contact_relation.contact_id=device_users_contacts.contact_id
+  WHERE device_users_contact_relation.device_user_id = ${user_id};`, function(err, result, fields){
+    if(err){
+      return callback(err, result);
+    }
+    else{
+      if(result.length == 0){
+        callback(err, [{
+          status : "error",
+          message : `no contacts for user ${user_id}`
+        }])
+      }
+      else{
+        callback(err,result);
+      }
+    }
+  });
+}
+
 // adds new row to flora_device_data 
 let add_row_to_realtime_data = (floraDataObj, log_time)=>{
   mysqlPool.query(`INSERT INTO devices_realtime_data (device_sn ,log_time ,latitude, longitude, satellites, pulse, battery, gps_status, bt_status, gsm_status)
@@ -494,7 +596,10 @@ module.exports = {
   get_weather_update,
   update_device_cache_data,
   get_device_updates,
-  get_user,
-  get_location_history
+  get_user: get_user_account,
+  get_location_history,
+  get_device_user_full_data,
+  get_device_users,
+  get_user_contacts
 };
   
