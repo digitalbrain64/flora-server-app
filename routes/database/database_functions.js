@@ -76,7 +76,7 @@ function update_device_cache_data(jsonObj){
   var updateTime = log_time;
 
   calcAvgSpeed(jsonObj, log_time);
-  add_row_to_realtime_data(jsonObj, log_time);
+  add_row_to_realtime_data(jsonObj,log_time);
 
   device_post_counter++;
     // check after 6sec if lastUpdateTime == updateTime then NO new POST requests from end point: device is off
@@ -91,26 +91,11 @@ function update_device_cache_data(jsonObj){
     // setting the lastUpdateTime to current updateTime
     lastUpdateTime = updateTime;
 
-    //console.log(jsonObj.avg_speed, jsonObj.distance);
-
-    var lat = jsonObj.latitude;
-    var lon = jsonObj.longitude;
-    var latDeg = lat.slice(0, 2);
-    var latMin = lat.slice(2, );
-    var lonDeg = lon.slice(0, 2);
-    var lonMin = lon.slice(2, );
-
-    var latFormat = parseInt(latDeg)+(parseFloat(latMin)/60);
-    var lonFormat = parseInt(lonDeg)+(parseFloat(lonMin)/60);
-
-    console.log(latFormat, lonFormat);
-    
-
     var sql = `UPDATE devices_cache_data
                SET log_time="${updateTime}",
                device_status=1,
-               latitude="${latFormat}",
-               longitude="${lonFormat}",
+               latitude="${jsonObj.latitude}",
+               longitude="${jsonObj.longitude}",
                sats="${jsonObj.satellites}",
                pulse="${jsonObj.pulse}",
                battery="${jsonObj.battery}",
@@ -131,7 +116,7 @@ function update_device_cache_data(jsonObj){
     if(device_post_counter == 50){
       var sql = `INSERT INTO 
       devices_location_history (device_sn ,log_time, latitude, longitude ,pulse) 
-      VALUES (${jsonObj.GSTSerial},"${log_time}","${parseFloat(jsonObj.latitude)/100}","${parseFloat(jsonObj.longitude)/100}","${jsonObj.pulse}");`;
+      VALUES (${jsonObj.GSTSerial},"${log_time}","${jsonObj.latitude}","${jsonObj.longitude}","${jsonObj.pulse}");`;
       mysqlPool.query(sql, function (err, result) {
         if (err) 
            throw err;
@@ -513,7 +498,7 @@ function get_user_contacts(callback, user_id){
 // adds new row to flora_device_data 
 let add_row_to_realtime_data = (floraDataObj, log_time)=>{
   mysqlPool.query(`INSERT INTO devices_realtime_data (device_sn ,log_time ,latitude, longitude, satellites, pulse, battery, gps_status, bt_status, gsm_status)
-  VALUES (${floraDataObj.GSTSerial}, "${log_time}", "${parseFloat(floraDataObj.latitude)/100}", "${parseFloat(floraDataObj.longitude)/100}",${floraDataObj.satellites},${floraDataObj.pulse},${floraDataObj.battery},${floraDataObj.gps_status},${floraDataObj.bt_status},${floraDataObj.gsm_status})`, function(err, result, fields){
+  VALUES (${floraDataObj.GSTSerial}, "${log_time}", "${floraDataObj.latitude}", "${floraDataObj.longitude}",${floraDataObj.satellites},${floraDataObj.pulse},${floraDataObj.battery},${floraDataObj.gps_status},${floraDataObj.bt_status},${floraDataObj.gsm_status})`, function(err, result, fields){
     if(err)
       throw err;
   });
@@ -535,15 +520,8 @@ let calcAvgSpeed = (jsonObj, time_stamp)=>{
     if(err)
       throw err;
     else{
-      var lat = jsonObj.latitude;
-      var lon = jsonObj.longitude;
-      var latDeg = lat.slice(0, 2);
-      var latMin = lat.slice(2, );
-      var lonDeg = lon.slice(0, 2);
-      var lonMin = lon.slice(2, );
-
-      var curr_lat = parseInt(latDeg)+(parseFloat(latMin)/60);
-      var curr_lon = parseInt(lonDeg)+(parseFloat(lonMin)/60);
+      var curr_lat = jsonObj.latitude;
+      var curr_lon = jsonObj.longitude;
       var curr_time_stamp = new Date(time_stamp);
 
       var prev_lat = result[0].latitude;
