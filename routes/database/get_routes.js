@@ -67,10 +67,13 @@ router.get('/getAppUserAccount', (req, res, next)=>{
           res.send(result);
         }, req.query.user_id);
       }
-      res.send([{
-        status : "error",
-        message : "please provide password and username/email"
-      }])
+      else if (!req.query.p && !req.query.u && !req.query.user_id){
+        res.send([{
+          status : "error",
+          message : "please provide password and username/email"
+        }])
+      }
+      
     } 
 });
 
