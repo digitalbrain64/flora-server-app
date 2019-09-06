@@ -51,7 +51,7 @@ router.get('/getDeviceUpdates', (req, res, next) =>{
 // route to get user from app_users
 router.get('/getAppUserAccount', (req, res, next)=>{
     if(req.query.p && req.query.u){
-      database.get_user(function(err, results){
+      database.user_login(function(err, results){
         if(err)
           res.send([{
             status : "error",
@@ -62,6 +62,11 @@ router.get('/getAppUserAccount', (req, res, next)=>{
       }, req.query.u, req.query.p)
     }
     else{
+      if(!req.query.p && !req.query.u && req.query.user_id){
+        database.get_app_user_account(function(err, result){
+          res.send(result);
+        }, req.query.user_id);
+      }
       res.send([{
         status : "error",
         message : "please provide password and username/email"
@@ -212,6 +217,7 @@ router.get('/getDeviceUserFull',(req, res, next)=>{
     }])
   }
   else {
+      
       database.get_device_users((error, result)=>{
         if(error){
           res.send([{

@@ -147,7 +147,7 @@ function get_device_updates(callback, device_sn){
 }
 
 // fetching app user information
-function get_user_account(callback, credentials, password){
+function user_login(callback, credentials, password){
   var sql = "";
 
   if(credentials.includes("@"))
@@ -171,6 +171,16 @@ function get_user_account(callback, credentials, password){
       else{
           callback(error, result); 
       }
+    }
+  })
+}
+
+function get_app_user_account(callback, user_id){
+  mysqlPool.query(`SELECT * FROM app_users WHERE user_id = ${user_id}`,function(err, result, fields){
+    if(err)
+      throw err;
+    else{
+      callback(err, result);
     }
   })
 }
@@ -574,7 +584,8 @@ module.exports = {
   get_weather_update,
   update_device_cache_data,
   get_device_updates,
-  get_user: get_user_account,
+  user_login,
+  get_app_user_account,
   get_location_history,
   get_device_user_full_data,
   get_device_users,
