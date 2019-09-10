@@ -61,7 +61,13 @@ router.get('/getAppUserDevices', (req, res, next) =>{
       else{
         res.send(results);
       }
-    })
+    },req.query.user_id)
+  }
+  else{
+    res.send([{
+      status : 'error',
+      message : 'please provide a user id'
+    }])
   }
 });
 
