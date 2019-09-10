@@ -146,6 +146,29 @@ function get_device_updates(callback, device_sn){
   });
 }
 
+// get information about GST devices assosicated to the app user
+function get_app_user_devices(callback, user_id){
+  mysqlPool.query(`SELECT devices_cache_data.device_sn, devices_cache_data.log_time, devices_cache_data.device_status, devices_cache_data.latitude, devices_cache_data.longitude,devices_cache_data.sats, devices_cache_data.pulse, devices_cache_data.battery, devices_cache_data.gps_status, devices_cache_data.bt_status,devices_cache_data.gsm_status, devices_cache_data.sos_status, devices_cache_data.distance, devices_cache_data.avg_speed
+  FROM app_user_devices
+  LEFT JOIN devices_cache_data
+  ON app_user_devices.device_id = devices_cache_data.device_sn
+  WHERE app_user_devices.user_id = ${user_id};`, function(err, result, fields){
+    if(err)
+      return callback(err, result);
+    else{
+      if(result.length == 0){
+        callback(err, [{
+          status:"error",
+          message: `no GST devices registered with user id ${user_id}`
+        }])
+      }
+      else{
+        callback(err, result);
+      }
+    }
+  })
+}
+
 // fetching app user information
 function user_login(callback, credentials, password){
   var sql = "";
@@ -577,18 +600,26 @@ let deg2rad = (deg)=>{
 module.exports = {
   get_highest_pulse,
   get_lowest_pulse,
+  //--------------//
+  user_login,
   change_user_pass,
   check_restore_code,
   send_pass_restore_code,
+  //--------------//
   post_sos_report,
+  //--------------//
   get_weather_update,
+  //--------------//
   update_device_cache_data,
   get_device_updates,
-  user_login,
+  //--------------//
   get_app_user_account,
+  //--------------//
   get_location_history,
+  //--------------//
   get_device_user_full_data,
   get_device_users,
-  get_user_contacts
+  get_user_contacts,
+  get_app_user_devices
 };
   

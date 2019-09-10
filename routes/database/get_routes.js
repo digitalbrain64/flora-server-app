@@ -48,6 +48,23 @@ router.get('/getDeviceUpdates', (req, res, next) =>{
   }
 });
 
+// get all GST devices associated with the app user (devices that the app user can track)
+router.get('/getAppUserDevices', (req, res, next) =>{
+  if(req.query.user_id){
+    database.get_app_user_devices((error, results)=>{
+      if(error){
+        res.send([{
+          status: 'error',
+          message : error
+        }]);
+      }
+      else{
+        res.send(results);
+      }
+    })
+  }
+});
+
 // route to get user from app_users
 router.get('/getAppUserAccount', (req, res, next)=>{
     if(req.query.p && req.query.u){
