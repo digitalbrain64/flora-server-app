@@ -148,10 +148,11 @@ function get_device_updates(callback, device_sn){
 
 // get information about GST devices assosicated to the app user
 function get_app_user_devices(callback, user_id){
-  mysqlPool.query(`SELECT devices_cache_data.device_sn, devices_cache_data.log_time, devices_cache_data.device_status, devices_cache_data.latitude, devices_cache_data.longitude,devices_cache_data.sats, devices_cache_data.pulse, devices_cache_data.battery, devices_cache_data.gps_status, devices_cache_data.bt_status,devices_cache_data.gsm_status, devices_cache_data.sos_status, devices_cache_data.distance, devices_cache_data.avg_speed
+  mysqlPool.query(`USE heroku_99593e22b69be93;
+  SELECT device_users.device_sn, device_users.first_name, device_users.last_name, device_users.phone_number_1, device_users.phone_number_2,device_users.address
   FROM app_user_devices
-  LEFT JOIN devices_cache_data
-  ON app_user_devices.device_id = devices_cache_data.device_sn
+  LEFT JOIN device_users
+  ON app_user_devices.device_id = device_users.device_sn
   WHERE app_user_devices.user_id = ${user_id};`, function(err, result, fields){
     if(err)
       return callback(err, result);
