@@ -510,34 +510,36 @@ function get_device_user_full_data_by_device(callback, device_id){
       return callback(err, user_rows);
     }
     else{
-      var user_full_data = {
-        user_id: user_rows[0].user_id,
-        user_first_name:user_rows[0].first_name,
-        user_last_name: user_rows[0].last_name,
-        user_address: user_rows[0].address,
-        user_phone_number_1:user_rows[0].phone_number_1,
-        user_phone_number_2:user_rows[0].phone_number_2,
-      }
       if(user_rows.length != 0){
-        mysqlPool.query(`SELECT device_users_contact_relation.relation ,device_users_contacts.contact_first_name, device_users_contacts.contact_last_name, device_users_contacts.contact_address, device_users_contacts.contact_phone_number_1, device_users_contacts.contact_phone_number_2
-        FROM device_users_contacts
-        LEFT JOIN device_users_contact_relation
-        ON device_users_contact_relation.contact_id=device_users_contacts.contact_id
-        WHERE device_users_contact_relation.device_user_id = ${user_rows[0].user_id};`, function(err, result, fields){
-          if(err){
-            return callback(err, result);
-          }
-          else{
-            if(result.length!=0){
-              user_full_data.user_phone_book = result[0];
-              callback(err, [user_full_data])
+        var user_full_data = {
+          user_id: user_rows[0].user_id,
+          user_first_name:user_rows[0].first_name,
+          user_last_name: user_rows[0].last_name,
+          user_address: user_rows[0].address,
+          user_phone_number_1:user_rows[0].phone_number_1,
+          user_phone_number_2:user_rows[0].phone_number_2,
+        }
+        if(user_rows.length != 0){
+          mysqlPool.query(`SELECT device_users_contact_relation.relation ,device_users_contacts.contact_first_name, device_users_contacts.contact_last_name, device_users_contacts.contact_address, device_users_contacts.contact_phone_number_1, device_users_contacts.contact_phone_number_2
+          FROM device_users_contacts
+          LEFT JOIN device_users_contact_relation
+          ON device_users_contact_relation.contact_id=device_users_contacts.contact_id
+          WHERE device_users_contact_relation.device_user_id = ${user_rows[0].user_id};`, function(err, result, fields){
+            if(err){
+              return callback(err, result);
             }
             else{
-              user_full_data.user_phone_book = "no contacts";
-              callback(err, [user_full_data]);
+              if(result.length!=0){
+                user_full_data.user_phone_book = result[0];
+                callback(err, [user_full_data])
+              }
+              else{
+                user_full_data.user_phone_book = "no contacts";
+                callback(err, [user_full_data]);
+              }
             }
-          }
-        })
+          })
+        }
       }
       else{
         callback(err, [{
