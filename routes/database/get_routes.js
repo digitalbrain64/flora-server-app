@@ -239,7 +239,7 @@ router.get('/getDeviceUserFull',(req, res, next)=>{
   if(!req.query.user_id && !req.query.device_id){
     res.send([{
       status : "error",
-      message : "please provide user id"
+      message : "please provide user id or device id"
     }])
   }
   else {
@@ -275,7 +275,6 @@ router.get('/getDeviceUserFull',(req, res, next)=>{
           message : "you must provide only ONE parameter"
         }])
       }
-      
   }
 })
 
