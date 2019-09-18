@@ -453,7 +453,7 @@ function get_device_users(callback, user_id){
   }
 }
 
-function get_device_user_full_data(callback, user_id){
+function get_device_user_full_data_by_user(callback, user_id){
   mysqlPool.query(`SELECT * FROM device_users WHERE user_id = ${user_id}`, function(err, user_rows, fields){
     if(err){
       return callback(err, user_rows);
@@ -472,12 +472,12 @@ function get_device_user_full_data(callback, user_id){
             if(result.length!=0){
               callback(err, [{
                 user_id: user_id,
-                user_first_name:user_rows[0].user_first_name,
-                user_last_name: user_rows[0].user_last_name,
-                user_address: user_rows[0].user_address,
-                user_phone_number_1:user_rows[0].user_phone_number_1,
-                user_phone_number_2:user_rows[0].user_phone_number_2,
-                user_phone_book: result
+                user_first_name:user_rows[0].first_name,
+                user_last_name: user_rows[0].last_name,
+                user_address: user_rows[0].address,
+                user_phone_number_1:user_rows[0].phone_number_1,
+                user_phone_number_2:user_rows[0].phone_number_2,
+                user_phone_book: result[0]
               }])
             }
             else{
@@ -490,6 +490,51 @@ function get_device_user_full_data(callback, user_id){
                 user_phone_number_2:user_rows[0].user_phone_number_2,
                 user_phone_book: "no contacts"
               }])
+            }
+          }
+        })
+      }
+      else{
+        callback(err, [{
+          status: "error",
+          message : "user not found"
+        }])
+      }
+    }
+  })
+  
+}
+function get_device_user_full_data_by_device(callback, device_id){
+  mysqlPool.query(`SELECT * FROM device_users WHERE device_sn = ${device_id}`, function(err, user_rows, fields){
+    if(err){
+      return callback(err, user_rows);
+    }
+    else{
+      var user_full_data = {
+        user_id: user_rows[0].user_id,
+        user_first_name:user_rows[0].first_name,
+        user_last_name: user_rows[0].last_name,
+        user_address: user_rows[0].address,
+        user_phone_number_1:user_rows[0].phone_number_1,
+        user_phone_number_2:user_rows[0].phone_number_2,
+      }
+      if(user_rows.length != 0){
+        mysqlPool.query(`SELECT device_users_contact_relation.relation ,device_users_contacts.contact_first_name, device_users_contacts.contact_last_name, device_users_contacts.contact_address, device_users_contacts.contact_phone_number_1, device_users_contacts.contact_phone_number_2
+        FROM device_users_contacts
+        LEFT JOIN device_users_contact_relation
+        ON device_users_contact_relation.contact_id=device_users_contacts.contact_id
+        WHERE device_users_contact_relation.device_user_id = ${user_rows[0].user_id};`, function(err, result, fields){
+          if(err){
+            return callback(err, result);
+          }
+          else{
+            if(result.length!=0){
+              user_full_data.user_phone_book = result[0];
+              callback(err, [user_full_data])
+            }
+            else{
+              user_full_data.user_phone_book = "no contacts";
+              callback(err, [user_full_data]);
             }
           }
         })
@@ -617,7 +662,8 @@ module.exports = {
   //--------------//
   get_location_history,
   //--------------//
-  get_device_user_full_data,
+  get_device_user_full_data_by_user,
+  get_device_user_full_data_by_device,
   get_device_users,
   get_user_contacts,
   get_app_user_devices

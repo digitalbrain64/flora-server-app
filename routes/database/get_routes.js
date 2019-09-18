@@ -236,25 +236,46 @@ router.get('/getHighestPulse', (req, res, next)=>{
 
 // full device user data including contacts
 router.get('/getDeviceUserFull',(req, res, next)=>{
-  if(!req.query.user_id){
+  if(!req.query.user_id && !req.query.device_id){
     res.send([{
       status : "error",
       message : "please provide user id"
     }])
   }
   else {
+      if(req.query.user_id && !req.query.device_id){
+        database.get_device_user_full_data_by_user((error, result)=>{
+          if(error){
+            res.send([{
+              status: "error",
+              message: error
+            }])
+          }
+          else{
+            res.send(result);
+          }
+        },req.query.user_id)
+      }
+      else if(!req.query.user_id && req.query.device_id){
+        database.get_device_user_full_data_by_device((error, result)=>{
+          if(error){
+            res.send([{
+              status: "error",
+              message: error
+            }])
+          }
+          else{
+            res.send(result);
+          }
+        },req.query.device_id)
+      }
+      else{
+        res.send([{
+          status: "error",
+          message : "you must provide only ONE parameter"
+        }])
+      }
       
-      database.get_device_users((error, result)=>{
-        if(error){
-          res.send([{
-            status: "error",
-            message: error
-          }])
-        }
-        else{
-          res.send(result);
-        }
-      },req.query.user_id)
   }
 })
 
