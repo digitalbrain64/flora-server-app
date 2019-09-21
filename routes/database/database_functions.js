@@ -479,7 +479,7 @@ function get_device_user_full_data_by_user(callback, user_id){
           else{
             if(result.length!=0){
             
-              user_full_data.user_phone_book = result[0];
+              user_full_data.user_phone_book = result;
               callback(err, [user_full_data])
             }
             else{
