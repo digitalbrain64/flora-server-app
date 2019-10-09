@@ -148,7 +148,7 @@ function get_device_updates(callback, device_sn){
 
 // get information about GST devices assosicated to the app user
 function get_app_user_devices(callback, user_id){
-  mysqlPool.query(`SELECT device_users.device_sn, device_users.first_name, device_users.last_name, device_users.phone_number_1, device_users.phone_number_2,device_users.address
+  mysqlPool.query(`SELECT device_users.device_sn, device_users.first_name, device_users.last_name, device_users.phone_number_1, device_users.phone_number_2,device_users.address,app_user_devices.date_of_activation
   FROM app_user_devices
   LEFT JOIN device_users
   ON app_user_devices.device_id = device_users.device_sn
