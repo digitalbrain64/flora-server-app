@@ -1,5 +1,6 @@
 /* database functionality module */
 /* contains all neccesery database functions for internal use and export */
+const fs = require('fs');
 
 // using npm mysql package for mysql db managment
 const mysql = require('mysql');
@@ -12,9 +13,6 @@ const request = require('request');
 
 // using mysql connection pool to manage connections and keep the connections to mysql db alive
 var mysqlPool = mysql.createPool("mysql://bbf377481226a0:eaef03fd@us-cdbr-iron-east-02.cleardb.net/heroku_99593e22b69be93?reconnect=true");
-
-// last update time will be changed dynamically
-var lastUpdateTime;
 
 var log_time;
 
@@ -73,57 +71,159 @@ function check_location_fix(current_latlng){
 function update_device_cache_data(jsonObj){
   var date = new Date();
   log_time = date.toISOString().slice(0, 19).replace('T', ' ');
-  var updateTime = log_time;
+  var currentUpdateTime = log_time;
 
   calcAvgSpeed(jsonObj, log_time);
   add_row_to_realtime_data(jsonObj,log_time);
 
-  device_post_counter++;
-    // check after 6sec if lastUpdateTime == updateTime then NO new POST requests from end point: device is off
-    // else: device is on
-    setTimeout(function(){
-      if(lastUpdateTime.localeCompare(updateTime) == 0){
-        set_device_status(jsonObj.GSTSerial, 0); // 0 - off
-        console.log(`device id: ${jsonObj.GSTSerial} - offline`);
+
+
+  /* updating the last update time of the device inside /updateTimeDevices */
+  // the goal is to store last update time about all connected devices
+  // this way we can check if the device was disconnected or not
+  // by comparing the update time in the file with the current time and 
+  // if the difference is longer then 6 second - device has gone offline
+
+  // read from 'updateTime' file - get all content of the file
+  fs.readFile('./updateTimeDevices.txt', 'utf8', function(err, data) {
+    if (err) throw err;
+
+    var updateDeviceJsonArr;
+
+    if(data == ""){
+      updateDeviceJsonArr = [];
+      var updateJsonTime = {
+        deviceId:jsonObj.GSTSerial, // deviceId to identify the device
+        lastUpdateTime:currentUpdateTime, // current time for comparing update times
+        historyCounter:0 // history counter to know when to add new record to deviceLocatioHistory MySql table
       }
-    },10000); // 8 sec
+      updateDeviceJsonArr.push(updateJsonTime);
 
-    // setting the lastUpdateTime to current updateTime
-    lastUpdateTime = updateTime;
-
-    var sql = `UPDATE devices_cache_data
-               SET log_time="${updateTime}",
-               device_status=1,
-               latitude="${jsonObj.latitude}",
-               longitude="${jsonObj.longitude}",
-               sats="${jsonObj.satellites}",
-               pulse="${jsonObj.pulse}",
-               battery="${jsonObj.battery}",
-               gps_status="${jsonObj.gps_status}",
-               bt_status="${jsonObj.bt_status}",
-               gsm_status="${jsonObj.gsm_status}",
-               sos_status=${jsonObj.sos_status}
-               WHERE device_sn=${jsonObj.GSTSerial};`;
-
-    mysqlPool.query(sql, function (err, result) {
-      if (err) 
-         throw err;
-      console.log(`device id: ${jsonObj.GSTSerial} - online`);
-      console.log(`device id: ${jsonObj.GSTSerial} - cache data updated`);
-    });
-
-    // if 5min has passed -> insert record to device_location_history
-    if(device_post_counter == 50){
-      var sql = `INSERT INTO 
-      devices_location_history (device_sn ,log_time, latitude, longitude ,pulse) 
-      VALUES (${jsonObj.GSTSerial},"${log_time}","${jsonObj.latitude}","${jsonObj.longitude}","${jsonObj.pulse}");`;
-      mysqlPool.query(sql, function (err, result) {
-        if (err) 
-           throw err;
-        console.log(`device id: ${jsonObj.GSTSerial} - location history record inserted`);
+      // write to file - parse the object to JSON object
+      fs.writeFile('./updateTimeDevices.txt', JSON.stringify(updateDeviceJsonArr), function (err) {
+        if (err) throw err;
       });
-      device_post_counter = 0;
-   }
+    }
+    else{
+      // parse to JsonArr and store in variable
+      updateDeviceJsonArr = JSON.parse(data); // data is stored as JSON array
+      var i;
+      // for loop - find the object with the same deviceId
+      for(i=0; i<updateDeviceJsonArr.length; i++){
+        // if found
+        if(updateDeviceJsonArr[i].deviceId == jsonObj.GSTSerial){
+          // update the lastUpdateTime value
+          updateDeviceJsonArr[i].lastUpdateTime = currentUpdateTime;
+          updateDeviceJsonArr[i].historyCounter = updateDeviceJsonArr[i].historyCounter+1
+
+
+          /* insert record to device location history table */
+          // new record is inserted every 5 (or more) minutes
+          // historyCounter value is +1 every time the GST device sends new data
+          // device send data every 3 seconds
+          // we want to save a new history record every 5 min
+          // 3sec*100histroyCounter = 5min
+          if(updateDeviceJsonArr[i].historyCounter >= 100){
+            // MySql command - inset into device_location_history table new record
+            var sql = `INSERT INTO 
+            devices_location_history (device_sn ,log_time, latitude, longitude ,pulse) 
+            VALUES (${jsonObj.GSTSerial},"${log_time}","${jsonObj.latitude}","${jsonObj.longitude}","${jsonObj.pulse}");`;
+
+            // execute command
+            mysqlPool.query(sql, function (err, result) {
+              if (err) 
+              throw err;
+              // output to terminal for debugging purposes
+              console.log(`device id: ${jsonObj.GSTSerial} - location history record inserted`);
+            });
+
+            // update historyCounter for current device to 0
+            updateDeviceJsonArr[i].historyCounter = 0;
+        }
+        break; // break - no need to loop any further
+      }
+    }
+    // if object not found in the array - no JSON object with same deviceId - we must add new object
+    if(i == updateDeviceJsonArr.length){
+      // create new object
+      var updateJsonTime = {
+        deviceId:jsonObj.GSTSerial,
+        lastUpdateTime:currentUpdateTime,
+        historyCounter:0
+      }
+      // push it to Json Array - using .push() as with any array in JS
+      updateDeviceJsonArr.push(updateJsonTime);
+    }
+
+    // write to file - write the updated Json Array - overwrite the existing data of the txt file
+    fs.writeFile('./updateTimeDevices.txt', JSON.stringify(updateDeviceJsonArr), function (err) {
+      if (err) throw err;
+    });
+  }
+});
+
+
+// async setTimeOut will chack each 8 seconds if devices gone offline
+// by comparing the updateTimeDevice.txt json objects with current time
+
+setTimeout(function(){
+  // get the object with the same deviceId from updateTimeDevices.txt file
+  // read from 'updateTime' file - get all content of the file
+  fs.readFile('./updateTimeDevices.txt', 'utf8', function(err, data) {
+    if (err) throw err;
+    
+    // parsing the data to JSON array - we know it's not empty because of previous actions
+    // we know the json object with update time and device id is in the array
+    var dataJsonArr = JSON.parse(data);
+
+    // find the object by deviceId
+    for(var i=0; i<dataJsonArr.length; i++){
+      // if found the object
+      if(dataJsonArr[i].deviceId == jsonObj.GSTSerial){
+        // if compared to current time (past 8 sec) - no change - the device is considered offline
+        if(dataJsonArr[i].lastUpdateTime.localeCompare(currentUpdateTime) == 0){
+          // remove the object from the array
+          dataJsonArr.splice(i, 1);
+
+          // write to file - write the updated Json Array - overwrite the existing data of the txt file
+          fs.writeFile('./updateTimeDevices.txt', JSON.stringify(dataJsonArr), function (err) {
+            if (err) throw err;
+            console.log('Saved!');
+          });
+
+          set_device_status(jsonObj.GSTSerial, 0);
+          console.log(`!!!!!!!!!!!!!!!!!!!!!!!!device id: ${jsonObj.GSTSerial} - offline`);
+          // output in terminal - for debugging purposes
+        }
+      }
+    }
+  });
+},8000); // 8 sec
+
+// sql string - device update with newest data directly from the GST device
+// device_status is 1 (ON) - we know it's ON because we just recieved an update from the device
+var sql = `UPDATE devices_cache_data
+SET log_time="${currentUpdateTime}",
+device_status=1,
+latitude="${jsonObj.latitude}",
+longitude="${jsonObj.longitude}",
+sats="${jsonObj.satellites}",
+pulse="${jsonObj.pulse}",
+battery="${jsonObj.battery}",
+gps_status="${jsonObj.gps_status}",
+bt_status="${jsonObj.bt_status}",
+gsm_status="${jsonObj.gsm_status}",
+sos_status=${jsonObj.sos_status}
+WHERE device_sn=${jsonObj.GSTSerial};`;
+
+// execute sql statemnt
+mysqlPool.query(sql, function (err, result) {
+  if (err) 
+    throw err;
+  // output to teminal for debugging purposes
+  console.log(`device id: ${jsonObj.GSTSerial} - online`);
+  console.log(`device id: ${jsonObj.GSTSerial} - cache data updated`);
+});
 }
 
 // serving the latest data from device cache data
@@ -327,7 +427,6 @@ function send_pass_restore_code(callback,credentials){
           }])
         }
       }
-        
   })
 }
 
@@ -375,7 +474,6 @@ function change_user_pass(callback,email,new_pass){
           message : "password changed"
         }])
       }
-      
     }
   })
 }
