@@ -2,6 +2,8 @@
 /* contains all neccesery database functions for internal use and export */
 const fs = require('fs');
 
+const stat_functions = require('./statistics_functions.js');
+
 // using npm mysql package for mysql db managment
 const mysql = require('mysql');
 
@@ -213,6 +215,8 @@ bt_status="${jsonObj.bt_status}",
 gsm_status="${jsonObj.gsm_status}",
 sos_status=${jsonObj.sos_status}
 WHERE device_sn=${jsonObj.GSTSerial};`;
+
+stat_functions.start_stat(jsonObj.GSTSerial);
 
 // execute sql statemnt
 mysqlPool.query(sql, function (err, result) {
@@ -743,7 +747,11 @@ function get_all_online_devices(callback, app_user_id){
     }
     else{
       if(res[0].user_priv == 5){
-        mysqlPool.query(`SELECT * FROM devices_cache_data WHERE device_status = 1`, function (error, result, fields) {
+        mysqlPool.query(`SELECT devices_cache_data.device_sn ,devices_cache_data.log_time, devices_cache_data.device_status, devices_cache_data.latitude, devices_cache_data.longitude, devices_cache_data.sats, devices_cache_data.pulse,devices_cache_data.battery,devices_cache_data.gps_status,devices_cache_data.bt_status,devices_cache_data.gsm_status, devices_cache_data.sos_status, devices_cache_data.distance, devices_cache_data.avg_speed,device_users.user_id, device_users.first_name, device_users.last_name,device_users.phone_number_1,device_users.phone_number_2
+        FROM devices_cache_data
+        LEFT JOIN device_users
+        ON device_users.device_sn=devices_cache_data.device_sn
+        WHERE devices_cache_data.device_status = 1;`, function (error, result, fields) {
           if (error){ 
              return callback(error,result);
           }

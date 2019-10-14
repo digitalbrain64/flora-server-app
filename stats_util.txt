@@ -1,0 +1,1 @@
+[{"device_id":1,"stat_start_time":"2019-10-14T19:00:02.000Z","pulse_at_start":72,"battery_at_start":17,"bt_time_counter_on":2409,"bt_time_counter_off":0,"device_time_counter_on":2409,"device_time_counter_off":0,"avg_speed":0,"distance":0,"avg_calories":0,"avg_steps":0}]

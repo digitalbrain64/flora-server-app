@@ -1,0 +1,1 @@
+[{"deviceId":1,"lastUpdateTime":"2019-10-14 22:40:14","historyCounter":23},{"deviceId":2,"lastUpdateTime":"2019-10-14 19:06:20","historyCounter":72}]

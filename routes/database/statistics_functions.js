@@ -18,139 +18,142 @@ var mysqlPool = mysql.createPool("mysql://bbf377481226a0:eaef03fd@us-cdbr-iron-e
 2. percentage of health risk - basis on weather information from the erea where user is currently at
    and avg pulse measurments in the past hour/day.
 3. distance that the user walked in the past hour/day.
+
+all statistics data is stored in: database -> tables -> stats_per_hour
+updates with new data every 3 seconds and resets all data each hour (and starts over)
+
 */
 
 
-// get the main database_functions.js file
-var device_user_stats = [];
-var currentDate = new Date();
-var formattedDate = currentDate.toISOString().slice(0, 19).replace('T', ' ');
-fs.readFile('./statistics_util_per_hour.txt', 'utf8', function(err, data) {
-    if (err) throw err;
-    else{
-        if(data == ""){
-            device_user_stats = [];
-            // adding basic info about the device user
-            fetchAllDevices(function(err, result){
-                for(var i=0; i<result.length; i++){
-                    var stats_obj = {
-                        user_id:result[i].user_id,
-                        device_id:result[i].device_sn,
-                        user_weight:result[i].weight,
-                        user_age:result[i].birthday - formattedDate,
-                        avg_pulse: 0,
-                        avg_speed: 0,
-                        avg_distance: 0,
-                        total_steps: 0
-                    }
-                    device_user_stats.push(stats_obj);
+// main function that starts the statistics infinite data proccessing
+function start_stat(device_id){
+    getDeviceUpdates(function(err, result){
+        fs.readFile('./stats_util.txt', function(err, data){
+            if(err) throw err;
+            var jsonDataFromFile = JSON.parse(data);
+            if(jsonDataFromFile.length == 0){
+                var jsonObj = {
+                    device_id:result[0].device_sn,
+                    stat_start_time:result[0].log_time,
+                    pulse_at_start:result[0].pulse,
+                    battery_at_start:result[0].battery,
+                    bt_time_counter_on: 0,
+                    bt_time_counter_off: 0,
+                    device_time_counter_on:0,
+                    device_time_counter_off:0,
+                    avg_speed:0,
+                    distance:0,
+                    avg_calories:0,
+                    avg_steps:0
                 }
-                // writing to file
-                fs.writeFile('./statistics_util_per_hour.txt', JSON.stringify(device_user_stats), function (err) {
+                jsonDataFromFile.push(jsonObj);
+                fs.writeFile('./stats_util.txt', JSON.stringify(jsonDataFromFile) , function(err, data){
                     if (err) throw err;
-                });
-            })
-        }
-        else{
-            
-        }
-    }
-});
+                })
+            }
+            else{
+                for(var i=0; i<jsonDataFromFile.length; i++){
+                    if(jsonDataFromFile[i].device_id == device_id){
+                        var dateTimeFromFile = new Date(jsonDataFromFile[i].stat_start_time);
+                        var hourFromFile = dateTimeFromFile.getHours();
 
-fs.readFile('./statistics_util_per_hour.txt',function(err, data){
-    if(err) throw err;
-    else{
-        var data_from_file = JSON.parse(data);
-        for(var i=0; i<data_from_file.length; i++){
-            fetchDeviceUpdate(function(err, result){
-                data_from_file[i].avg_pulse = result.pulse;
-            },data_from_file[i].device_id)
-        }
-    }
-})
+                        var dateTimeFromUpdate = new Date(result[0].log_time);
+                        var hourFromUpdate = dateTimeFromUpdate.getHours();
+                        console.log(hourFromFile, hourFromUpdate);
+                        
+                        if(hourFromFile != hourFromUpdate){
+                            var jsonObj = {
+                                device_id:result[0].device_sn,
+                                stat_start_time:result[0].log_time,
+                                pulse_at_start:result[0].pulse,
+                                battery_at_start:result[0].battery,
+                                bt_time_counter_on: 0,
+                                bt_time_counter_off: 0,
+                                device_time_counter_on:0,
+                                device_time_counter_off:0,
+                                avg_speed:0,
+                                distance:0,
+                                avg_calories:0,
+                                avg_steps:0
+                            }
+                            jsonDataFromFile[i] = jsonObj;
+                            fs.writeFile('./stats_util.txt', JSON.stringify(jsonDataFromFile) , function(err, data){
+                                if (err) throw err;
+                            })
+                        }
+                        else{
+                            // bluetooth active time counter (every 3 seconds)
+                            if(result[0].bt_status == 0){
+                                jsonDataFromFile[i].bt_time_counter_off+=3;
+                            }
+                            else{
+                                jsonDataFromFile[i].bt_time_counter_on+=3;
+                            }
 
-// /* 1. calories counter */
-var device_user_id = "310518410";
+                            if(result[0].device_status == 0){
+                                jsonDataFromFile[i].device_time_counter_off+=3;
+                            }
+                            else{
+                                jsonDataFromFile[i].device_time_counter_on+=3;
+                            }
 
-let fetchAllDevices = (callback)=>{
-    mysqlPool.query(`SELECT * FROM device_users`, function(err, result, fields){
-        if(err){
-            console.log(err);
-          return callback(err, result);
-        }
-        else{
-            console.log(result);
-          callback(err, result);
-        }
-    })
+                            if(jsonDataFromFile[i].distance != result[0].distance){
+                                jsonDataFromFile[i].distance
+                            }
+                            fs.writeFile('./stats_util.txt', JSON.stringify(jsonDataFromFile) , function(err, data){
+                                if (err) throw err;
+                            })
+                        }
+                    }
+                }
+            }
+        });
+    },device_id)
+    
 }
 
-// let fetchDeviceUserData = (callback, device_user_id)=>{
-//     mysqlPool.query(`SELECT * FROM device_users WHERE user_id="${device_user_id}"`, function(err, result, fields){
-//         if(err){
-//             console.log(err);
-//           return callback(err, result);
-//         }
-//         else{
-//             console.log(result);
-//           callback(err, result);
-//         }
-//     })
-// }
 
-let fetchDeviceUpdate = (callback, device_id) =>{
-    mysqlPool.query(`SELECT * FROM devices_cache_data WHERE device_sn=${device_id}`, function(err, result, fields){
+// utility functions for this statistic data proccessing
+
+// get all device users
+let getAllDeviceUsers= (callback)=>{
+    mysqlPool.query(`SELECT * FROM device_users`, function(err, results, fields){
         if(err){
-            console.log(err);
-          return callback(err, result);
+          return callback(err, results);
         }
         else{
-            console.log(result);
-          callback(err, result);
+          callback(err, results);
         }
-    })
+    });
 }
 
-//     var date = new Date();
-//     var device_id;
-//     var current_date = date;
-//     var device_user_weight;
-//     var device_user_birthday;
-//     var user ;
+// get device update (by device_id)
+let getDeviceUpdates = (callback, device_id)=>{
+    mysqlPool.query(`SELECT * FROM devices_cache_data WHERE device_sn = ${device_id}`, function (error, result, fields) {
+        if (error){ 
+            return callback(error,result);
+        }
+        else{
+            callback(error,result);
+        }
+    });
+}
 
-//     fetchDeviceUserData(function(err, result){
-//         // 1. device_user weight (in kg)
-//         // 2. device_user age (by getting it from user birthday)
-//         device_user_weight = result[0].weight;
-//         device_user_birthday = result[0].birthday;
-//         device_id = result[0].device_sn;
-//         user = result[0];
-//     },device_user_id);
+// get single device statistics (per hour table)
+let getDeviceStatPerHour = (callback, device_id)=>{
+    mysqlPool.query(`SELECT * FROM stats_per_hour WHERE device_sn = ${device_id}`, function (error, result, fields) {
+        if (error){ 
+            return callback(error,result);
+        }
+        else{
+            callback(error,result);
+        }
+    });
+}
 
-//     console.log(user.weight, device_user_birthday, device_user_speed, device_user_pulse);
+let addNewStatsPerHour = (obj)=>{
+    mysqlPool.query(`INSERT INTO stats_per_hour(device_sn, user_id, user_weight, user_age, user_avg_pulse, user_avg_distance, user_avg_speed, user_steps, user_avg_calories, stats_start_time, device_on_time, device_off_time)
+    VALUES()`)
+}
 
-
-
-
-//     var device_user_speed;
-//     var device_user_pulse;
-//     var device_user_distance;
-
-//     // fetchDeviceUpdate(function(err, result){
-//     //     // 1. the distance user has covered and average speed per a time slice
-//     //     // 2. pulse measurments
-//     //     if(result.device_status == 0){
-//     //         device_user_pulse = 0;
-//     //         device_user_speed = 0;
-//     //     }
-//     //     else{
-//     //         device_user_pulse = result.pulse;
-//     //         device_user_speed = parseFloat(result.avg_speed);
-//     //     }
-//     //     device_user_distance = parseFloat(result.distance);
-//     // },device_id);    
-
-
-
-
-//     //
+module.exports = { start_stat }
