@@ -16,8 +16,6 @@ var mysqlPool = mysql.createPool("mysql://bbf377481226a0:eaef03fd@us-cdbr-iron-e
 
 var log_time;
 
-var device_post_counter = 0;
-
 // API key for openweathermap API
 var openWeatherApiKey = "dd600a6f3524bad742db42efe5147d7e";
 
@@ -532,7 +530,7 @@ function get_device_users(callback, user_id){
     });
   }
   else{
-    mysqlPool.query(`SELECT * FROM device_users WHERE user_id = ${user_id}`, function(err, result, fields){
+    mysqlPool.query(`SELECT * FROM device_users WHERE user_id = "${user_id}"`, function(err, result, fields){
       if(err){
         return callback(err, result);
       }
@@ -552,7 +550,7 @@ function get_device_users(callback, user_id){
 }
 
 function get_device_user_full_data_by_user(callback, user_id){
-  mysqlPool.query(`SELECT * FROM device_users WHERE user_id = ${user_id}`, function(err, user_rows, fields){
+  mysqlPool.query(`SELECT * FROM device_users WHERE user_id = "${user_id}"`, function(err, user_rows, fields){
     if(err){
       return callback(err, user_rows);
     }
@@ -597,6 +595,7 @@ function get_device_user_full_data_by_user(callback, user_id){
   })
   
 }
+
 function get_device_user_full_data_by_device(callback, device_id){
   mysqlPool.query(`SELECT * FROM device_users WHERE device_sn = ${device_id}`, function(err, user_rows, fields){
     if(err){
@@ -648,7 +647,7 @@ function get_user_contacts(callback, user_id){
   FROM device_users_contacts
   LEFT JOIN device_users_contact_relation
   ON device_users_contact_relation.contact_id=device_users_contacts.contact_id
-  WHERE device_users_contact_relation.device_user_id = ${user_id};`, function(err, result, fields){
+  WHERE device_users_contact_relation.device_user_id = "${user_id}";`, function(err, result, fields){
     if(err){
       return callback(err, result);
     }
@@ -735,6 +734,141 @@ let deg2rad = (deg)=>{
   return deg * (Math.PI/180)
 }
 
+// function fetches all devices that are currently 'Online'
+function get_all_online_devices(callback, app_user_id){
+  var verified_user = true;
+  mysqlPool.query(`SELECT * FROM app_users WHERE user_id = ${app_user_id}`, function(err, res, fields){
+    if(err){
+      callback(err, res);
+    }
+    else{
+      if(res[0].user_priv == 5){
+        mysqlPool.query(`SELECT * FROM devices_cache_data WHERE device_status = 1`, function (error, result, fields) {
+          if (error){ 
+             return callback(error,result);
+          }
+          else{
+            return callback(error,result);
+          }
+        });
+      }
+      else{
+        callback(err, [{
+          status: "error",
+          message: "user has no privileges for this function"
+        }])
+      }
+    }
+  });
+}
+
+// a special function similar to get_device_updates:
+// fetches the most recent data about the GST device and checks if the sos_status (sos cutton) was pessed
+// if the button was pressed (sos_status = 1) then fetches the information about the device user
+// and adds it to the response JSON string 
+function get_device_updates_and_check_sos_status(callback, device_id){
+  mysqlPool.query(`SELECT * FROM devices_cache_data WHERE device_sn = ${device_id}`, function (error, result, fields) {
+    if (error){ 
+       return callback(error,result);
+    }
+    else{
+      if(result.length == 0){
+        callback(error, [{
+          status : "error",
+          message : `no cache data for device_id : ${device_id}`
+        }])
+      }
+      else{
+        if(result[0].sos_status == 1){
+          mysqlPool.query(`SELECT * FROM device_users WHERE device_sn = ${device_id}`, function(err, devResult, fields){
+            if(err){
+              return callback(err, result);
+            }
+            else{
+                callback(err, [result[0],devResult[0]] );
+            }
+          });
+        }
+        else{
+          callback(error, result);
+        }
+      }
+    }
+  });
+}
+
+// adding new GST device user.
+// checking if the user_id (teudat zehut) and device serial number are unique
+// if - same serial number or teudat zehut was added before to some other device
+// sends a message with details to the client about invalid infomration
+// else - adding new user to device_users table, app_user_devices, device_cache_data
+// the GST device will be assigned to the app user who send the request to add new device user
+function post_add_new_dev_user(callback,devUserObj){
+
+  // step 1: check if the ID and device_sn are unique
+  mysqlPool.query(`SELECT * FROM device_users 
+  WHERE device_sn=${devUserObj.device_sn}
+  OR user_id = "${devUserObj.user_id}";`,
+  function(errorSN, resSN, fields){
+    if(errorSN){
+      callback(errorSN, resSN);
+    }
+    else{
+      // if length is NOT 0 then ID and serial number are NOT unique
+      if(resSN.length != 0){
+        callback(errorSN, [{
+          status: "error",
+          message : "device with the same serial number/user ID already registered"
+        }]);
+      }
+      else{
+        // STEP 2: add new record to device_users
+        var sql1 = `INSERT INTO device_users(user_id,device_sn,first_name,last_name,phone_number_1,phone_number_2,address,weight,height,health_insurance)
+        VALUES ("${devUserObj.user_id}",${devUserObj.device_sn},"${devUserObj.first_name}","${devUserObj.last_name}","${devUserObj.phone_num_1}","${devUserObj.phone_num_2}","${devUserObj.address}",${devUserObj.weight},${devUserObj.height},"${devUserObj.health_insurance}");`;
+        // execute sql statemnt
+        mysqlPool.query(sql1, function (err, result) {
+          if (err) {
+            return callback(err, result)
+          }
+          else{
+            // STEP 3: add new record to app_user_devices
+            var date= new Date();
+            var current_date_time = date.toISOString().slice(0, 19).replace('T', ' ');
+            var sql2 = `INSERT INTO app_user_devices(device_id, user_id, date_of_activation) VALUES (${devUserObj.device_sn}, ${devUserObj.app_user_id}, "${current_date_time}");`;
+            mysqlPool.query(sql2, function (err, result) {
+              if (err) {
+                return callback(err, result)
+              }
+              else{
+                // STEP 4: add new record to device_cache_data
+                // set all modules status to 0
+                // when device will be turned on = modules will change they're status according to new information from the device
+                var sql3 = `INSERT INTO devices_cache_data(device_sn, log_time, device_status, latitude, longitude, sats, pulse, battery, gps_status, bt_status, gsm_status, sos_status, distance, avg_speed)
+                VALUES(${devUserObj.device_sn}, "${current_date_time}", 0, "0", "0", 0,0,0,0,0,0,0, "0", "0");`
+                mysqlPool.query(sql3, function(error, res){
+                  if(error){
+                    return callback(error,res);
+                  }
+                  else{
+                    callback(error, [{
+                      status : "OK",
+                      message : "device user added"
+                    }])
+                  }
+                })
+              }
+            });
+          }
+        });
+      }
+    }
+  })
+  
+
+  
+
+}
+
 module.exports = {
   get_highest_pulse,
   get_lowest_pulse,
@@ -745,6 +879,7 @@ module.exports = {
   send_pass_restore_code,
   //--------------//
   post_sos_report,
+  post_new_dev_user: post_add_new_dev_user,
   //--------------//
   get_weather_update,
   //--------------//
@@ -759,6 +894,8 @@ module.exports = {
   get_device_user_full_data_by_device,
   get_device_users,
   get_user_contacts,
-  get_app_user_devices
+  get_app_user_devices,
+  get_device_updates_and_check_sos_status,
+  get_all_online_devices
 };
   

@@ -232,7 +232,7 @@ router.get('/getHighestPulse', (req, res, next)=>{
     },req.query.id)
   }
   
-})
+});
 
 // full device user data including contacts
 router.get('/getDeviceUserFull',(req, res, next)=>{
@@ -276,7 +276,7 @@ router.get('/getDeviceUserFull',(req, res, next)=>{
         }])
       }
   }
-})
+});
 
 router.get('/getDeviceUser', (req, res, next)=>{
   if(!req.query.user_id){
@@ -298,7 +298,7 @@ router.get('/getDeviceUser', (req, res, next)=>{
       }
     },req.query.user_id)
   }
-})
+});
 
 router.get('/getDeviceUserContacts', (req, res, next)=>{
   if(!req.query.user_id){
@@ -318,6 +318,48 @@ router.get('/getDeviceUserContacts', (req, res, next)=>{
         res.send(result);
     },req.query.user_id)
   }
-})
+});
+
+router.get('/getDeviceUpdateCheckSosStatus', (req, res, next)=>{
+  if(req.query.device_sn){
+    database.get_device_updates_and_check_sos_status(function (err, result) {
+      if (err){
+        res.send([{
+          status : "error",
+          message : err
+        }])
+      }
+      else
+        res.send(result);
+    }, req.query.device_sn);
+  }
+  else{
+    res.send([{
+      status : "error",
+      message : "please provide device serial number"
+    }])
+  }
+});
+
+router.get('/getAllOnlineDevices', (req, res, fields)=>{
+  if(req.query.app_user_id){
+    database.get_all_online_devices(function (err, result) {
+      if (err){
+        res.send([{
+          status : "error",
+          message : err
+        }])
+      }
+      else
+        res.send(result);
+    }, req.query.app_user_id);
+  }
+  else{
+    res.send([{
+      status : "error",
+      message : "please provide device serial number"
+    }])
+  }
+});
 
 module.exports = router;

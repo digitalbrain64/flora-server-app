@@ -14,6 +14,22 @@ router.post('/postFloraData', (req,res,next) => {
     next();
 });
 
+router.post('/postNewDeviceUser', (req, res, next) => {
+    database.post_new_dev_user(function(err, result){
+        if(err){
+            res.send([{
+                status: "error",
+                message: err
+            }])
+            next();
+        }
+        else{
+            res.send(result);
+            next();
+        }
+    },req.body);
+})
+
 
 router.post('/postSosReport', (req, res, next)=>{
     database.post_sos_report(req.body);
