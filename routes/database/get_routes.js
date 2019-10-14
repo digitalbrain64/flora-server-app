@@ -331,7 +331,7 @@ router.get('/getDeviceUpdateCheckSosStatus', (req, res, next)=>{
       }
       else
         res.send(result);
-    }, req.query.device_sn);
+    }, req.query.device_id);
   }
   else{
     res.send([{
