@@ -321,7 +321,7 @@ router.get('/getDeviceUserContacts', (req, res, next)=>{
 });
 
 router.get('/getDeviceUpdateCheckSosStatus', (req, res, next)=>{
-  if(req.query.device_sn){
+  if(req.query.device_id){
     database.get_device_updates_and_check_sos_status(function (err, result) {
       if (err){
         res.send([{
