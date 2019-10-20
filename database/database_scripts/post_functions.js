@@ -249,6 +249,7 @@ let set_device_status = (device_sn,deviceStatus)=>{
     avg_speed = 0,
     steps_count = 0,
     calories_burn = 0,
+    total_distance = 0,
     stats_start_time = "0000-00-00",
     minutes_since_stats_start = ${0}
     WHERE device_sn = ${device_sn};`, function(err, result, fields){
