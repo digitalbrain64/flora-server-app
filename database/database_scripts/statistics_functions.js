@@ -131,7 +131,8 @@ function start_stat(jsonObj,time_stamp){
 
                     mysqlPool.query(`UPDATE device_statistic
                     SET avg_pulse = ${parseInt(jsonDataFromFile[0].avg_pulse)},
-                    total_distance = ${parseFloat(jsonDataFromFile[0].total_distance).toFixed(4)},
+                    total_distance = ${parseFloat(jsonDataFromFile[0].total_distance).toFixed(3)},
+                    user_age = ${userAge},
                     avg_speed = ${parseFloat(jsonDataFromFile[0].avg_speed).toFixed(3)},
                     steps_count = ${parseInt(jsonDataFromFile[0].avg_steps)},
                     calories_burn = ${parseFloat(jsonDataFromFile[0].approx_calories).toFixed(2)},
