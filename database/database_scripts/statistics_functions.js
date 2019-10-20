@@ -76,7 +76,7 @@ function start_stat(jsonObj,time_stamp){
 
 
                     // difference in milliseconds = currenct date (date and time from where the server is located) - date time from the file (when statistic started)
-                    var diffInMS = dateTimeCurrent.getTime() - dateTimeFromFile.getTime(); //milliseconds
+                    var diffInMS = parseInt(dateTimeCurrent.getTime() - dateTimeFromFile.getTime()); //milliseconds
                     var diffInHours = (diffInMS/(1000*60*60))%24; // difference in hours
 
                     // average speed is calculated by taking the total distance and devide it by difference in hours
@@ -96,7 +96,7 @@ function start_stat(jsonObj,time_stamp){
                     var userGender = jsonDataFromFile[0].user_gender; // 0 - male  ,  1 - female
 
                     // 4. duration of activity (in minutes)
-                    var durationPerTimeSlice = parseInt(((diffInMS / (1000*60)) % 60)); // minutes
+                    var durationPerTimeSlice = 1; // 1 minutes between each setInterval callback function
 
                     // 5. pulse (heart rate)
                     var avgPulsePerTimeSlice = jsonDataFromFile[0].avg_pulse;
@@ -123,7 +123,7 @@ function start_stat(jsonObj,time_stamp){
                     if(calories < 0){
                         calories = 0;
                     }
-                    jsonDataFromFile[0].approx_calories = calories;
+                    jsonDataFromFile[0].approx_calories += calories;
 
                     jsonDataFromFile[0].avg_steps = parseFloat(jsonDataFromFile[0].total_distance) * 1250; // approx. number of steps in 1 km for average person
 
