@@ -351,7 +351,7 @@ let calcAvgSpeedAndUpdateCacheTable = (jsonObj, time_stamp)=>{
               deviceObj = JSON.parse(data);
             }
     
-            deviceObj[0].update_counter++;
+            deviceObj[0].update_counter +=1;
             deviceObj[0].distance +=distance;
             deviceObj[0].total_pulse +=result[0].pulse;
     
