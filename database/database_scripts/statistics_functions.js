@@ -120,15 +120,18 @@ function start_stat(jsonObj,time_stamp){
                     }
 
                     // add calories to file
+                    if(calories < 0){
+                        calories = 0;
+                    }
                     jsonDataFromFile[0].approx_calories = calories;
 
-                    jsonDataFromFile[0].avg_steps = parseFloat(jsonDataFromFile[0].total_distance) * 1,250; // approx. number of steps in 1 km for average person
+                    jsonDataFromFile[0].avg_steps = parseFloat(jsonDataFromFile[0].total_distance) * 1250; // approx. number of steps in 1 km for average person
 
                     // update the database table with current statistic data
 
                     mysqlPool.query(`UPDATE device_statistic
                     SET avg_pulse = ${parseInt(jsonDataFromFile[0].avg_pulse)},
-                    total_distance = ${parseFloat(jsonDataFromFile[0].total_distance).toFixed(3)},
+                    total_distance = ${parseFloat(jsonDataFromFile[0].total_distance).toFixed(4)},
                     avg_speed = ${parseFloat(jsonDataFromFile[0].avg_speed).toFixed(3)},
                     steps_count = ${parseInt(jsonDataFromFile[0].avg_steps)},
                     calories_burn = ${parseFloat(jsonDataFromFile[0].approx_calories).toFixed(2)},

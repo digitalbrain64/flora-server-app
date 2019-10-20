@@ -351,9 +351,9 @@ let calcAvgSpeedAndUpdateCacheTable = (jsonObj, time_stamp)=>{
               deviceObj = JSON.parse(data);
             }
     
-            deviceObj[0].update_counter = deviceObj[0].update_counter+1;
-            deviceObj[0].distance = deviceObj[0].distance+distance;
-            deviceObj[0].total_pulse = deviceObj[0].total_pulse+result[0].pulse;
+            deviceObj[0].update_counter++;
+            deviceObj[0].distance +=distance;
+            deviceObj[0].total_pulse +=result[0].pulse;
     
             fs.writeFile(`./database/database_files/devices_stats/stats_device_${deviceObj[0].device_id}.txt`, JSON.stringify(deviceObj) , function(err, data){
               if (err) throw err;
