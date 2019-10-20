@@ -2,12 +2,13 @@ const express = require('express');
 const router = express.Router();
 
 // importing database functionality
-const database = require('./database_functions');
+const getFunctions = require('../database/database_scripts/get_functions.js');
+const otherFunctions = require('../database/database_scripts/other_functions.js');
 
 // route to get location history from device_location_history
 router.get('/getLocationHistory', (req, res, next)=>{
   if(req.query.device_sn && req.query.from_date && req.query.to_date){
-    database.get_location_history(function (err, result) {
+    getFunctions.get_location_history(function (err, result) {
       if (err)
           res.send([{
             status : "error",
@@ -29,7 +30,7 @@ router.get('/getLocationHistory', (req, res, next)=>{
 // route to get recent data from device_cache_data
 router.get('/getDeviceUpdates', (req, res, next) =>{
   if(req.query.device_sn){
-    database.get_device_updates(function (err, result) {
+    getFunctions.get_device_updates(function (err, result) {
       if (err){
         res.send([{
           status : "error",
@@ -51,7 +52,7 @@ router.get('/getDeviceUpdates', (req, res, next) =>{
 // get all GST devices associated with the app user (devices that the app user can track)
 router.get('/getAppUserDevices', (req, res, next) =>{
   if(req.query.user_id){
-    database.get_app_user_devices((error, results)=>{
+    getFunctions.get_app_user_devices((error, results)=>{
       if(error){
         res.send([{
           status: 'error',
@@ -74,7 +75,7 @@ router.get('/getAppUserDevices', (req, res, next) =>{
 // route to get user from app_users
 router.get('/getAppUserAccount', (req, res, next)=>{
     if(req.query.p && req.query.u){
-      database.user_login(function(err, results){
+      getFunctions.user_login(function(err, results){
         if(err)
           res.send([{
             status : "error",
@@ -86,7 +87,7 @@ router.get('/getAppUserAccount', (req, res, next)=>{
     }
     else{
       if(!req.query.p && !req.query.u && req.query.user_id){
-        database.get_app_user_account(function(err, result){
+        getFunctions.get_app_user_account(function(err, result){
           res.send(result);
         }, req.query.user_id);
       }
@@ -102,7 +103,7 @@ router.get('/getAppUserAccount', (req, res, next)=>{
 
 router.get('/getWeatherUpdate', (req, res, next)=>{
   if(req.query.lat && req.query.lng){
-    database.get_weather_update(function(err, result){
+    getFunctions.get_weather_update(function(err, result){
       if(err)
         res.send([{
           status : "error",
@@ -133,7 +134,7 @@ router.get('/sendRestoreCode', (req, res, next)=>{
     }])
   }
   else{
-    database.send_pass_restore_code(function(err, result){
+    otherFunctions.send_pass_restore_code(function(err, result){
       if(err)
         res.send([{
           status : "error",
@@ -151,7 +152,7 @@ router.get('/sendRestoreCode', (req, res, next)=>{
 // if all went well : email sent back to client for later use in the final step
 router.get('/checkRestoreCode', (req, res, next)=>{
   if(req.query.restoreCode && req.query.e){
-    database.check_restore_code(function(err, result){
+    otherFunctions.check_restore_code(function(err, result){
       if(err)
         res.send([{
           status : "error",
@@ -173,7 +174,7 @@ router.get('/checkRestoreCode', (req, res, next)=>{
 // updating the password and removing the restore_code from user in database
 router.get('/passChange', (req, res, next)=>{
   if(req.query.newPass && req.query.e){
-    database.change_user_pass(function(err, result){
+    otherFunctions.change_user_pass(function(err, result){
       if(err)
         res.send([{
           status : "error",
@@ -200,7 +201,7 @@ router.get('/getLowestPulse', (req, res, next)=>{
     }])
   }
   else{
-    database.get_lowest_pulse(function(err, result){
+    getFunctions.get_lowest_pulse(function(err, result){
       if(err)
         res.send([{
           status : "error",
@@ -221,7 +222,7 @@ router.get('/getHighestPulse', (req, res, next)=>{
     }])
   }
   else{
-    database.get_highest_pulse(function(err, result){
+    getFunctions.get_highest_pulse(function(err, result){
       if(err)
         res.send([{
           status : "error",
@@ -244,7 +245,7 @@ router.get('/getDeviceUserFull',(req, res, next)=>{
   }
   else {
       if(req.query.user_id && !req.query.device_id){
-        database.get_device_user_full_data_by_user((error, result)=>{
+        getFunctions.get_device_user_full_data_by_user((error, result)=>{
           if(error){
             res.send([{
               status: "error",
@@ -257,7 +258,7 @@ router.get('/getDeviceUserFull',(req, res, next)=>{
         },req.query.user_id)
       }
       else if(!req.query.user_id && req.query.device_id){
-        database.get_device_user_full_data_by_device((error, result)=>{
+        getFunctions.get_device_user_full_data_by_device((error, result)=>{
           if(error){
             res.send([{
               status: "error",
@@ -286,7 +287,7 @@ router.get('/getDeviceUser', (req, res, next)=>{
     }]);
   }
   else{
-    database.get_device_users((err, result)=>{
+    getFunctions.get_device_users((err, result)=>{
       if(err){
         res.send([{
           status : "error",
@@ -308,7 +309,7 @@ router.get('/getDeviceUserContacts', (req, res, next)=>{
     }])
   }
   else{
-    database.get_user_contacts((err, result)=>{
+    getFunctions.get_user_contacts((err, result)=>{
       if(err)
         res.send([{
           status:"error",
@@ -322,7 +323,7 @@ router.get('/getDeviceUserContacts', (req, res, next)=>{
 
 router.get('/getDeviceUpdateCheckSosStatus', (req, res, next)=>{
   if(req.query.device_id){
-    database.get_device_updates_and_check_sos_status(function (err, result) {
+    getFunctions.get_device_updates_and_check_sos_status(function (err, result) {
       if (err){
         res.send([{
           status : "error",
@@ -343,7 +344,7 @@ router.get('/getDeviceUpdateCheckSosStatus', (req, res, next)=>{
 
 router.get('/getAllOnlineDevices', (req, res, fields)=>{
   if(req.query.app_user_id){
-    database.get_all_online_devices(function (err, result) {
+    getFunctions.get_all_online_devices(function (err, result) {
       if (err){
         res.send([{
           status : "error",
