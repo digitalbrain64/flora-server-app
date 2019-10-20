@@ -1,12 +1,8 @@
-/* database functionality module */
-/* contains all neccesery database functions for internal use and export */
+/* Statistic Functions Module */
 const fs = require('fs');
 
 // using npm mysql package for mysql db managment
 const mysql = require('mysql');
-
-// request for http requests
-const request = require('request');
 
 // using mysql connection pool to manage connections and keep the connections to mysql db alive
 var mysqlPool = mysql.createPool("mysql://bbf377481226a0:eaef03fd@us-cdbr-iron-east-02.cleardb.net/heroku_99593e22b69be93?reconnect=true");
@@ -76,8 +72,9 @@ function start_stat(jsonObj,time_stamp){
 
 
                     // difference in milliseconds = currenct date (date and time from where the server is located) - date time from the file (when statistic started)
-                    var diffInMS = parseInt(dateTimeCurrent.getTime() - dateTimeFromFile.getTime()); //milliseconds
+                    var diffInMS = dateTimeCurrent.getTime() - dateTimeFromFile.getTime(); //milliseconds
                     var diffInHours = (diffInMS/(1000*60*60))%24; // difference in hours
+                    
 
                     // average speed is calculated by taking the total distance and devide it by difference in hours
                     var avgSpeedPerTimeSlice = jsonDataFromFile[0].total_distance/diffInHours; // average speed of user per time slice (in km/h)
@@ -96,7 +93,7 @@ function start_stat(jsonObj,time_stamp){
                     var userGender = jsonDataFromFile[0].user_gender; // 0 - male  ,  1 - female
 
                     // 4. duration of activity (in minutes)
-                    var durationPerTimeSlice = 1; // 1 minutes between each setInterval callback function
+                    var durationPerTimeSlice = parseInt(((diffInMS / (1000*60)) % 60)); // minutes
 
                     // 5. pulse (heart rate)
                     var avgPulsePerTimeSlice = jsonDataFromFile[0].avg_pulse;
@@ -112,11 +109,11 @@ function start_stat(jsonObj,time_stamp){
                     // for Woman
                     var calories;
                     if(userGender){
-                        calories = [ (userAge * 0.074) + (userWeightInKg * 0.1263) + (avgPulsePerTimeSlice * 0.4472) - 20.4022 ] * durationPerTimeSlice / 4.184;
+                        calories = [ (userAge * 0.074) + (userWeightInKg * 0.1263) + (avgPulsePerTimeSlice * 0.4472) - 20.4022 ] * 1 / 4.184;
                     }
                     // for Men
                     else{
-                        calories = [ (userAge * 0.2017) + (userWeightInKg * 0.1988) + (avgPulsePerTimeSlice * 0.6309) - 55.0969 ] * durationPerTimeSlice / 4.184;
+                        calories = [ (userAge * 0.2017) + (userWeightInKg * 0.1988) + (avgPulsePerTimeSlice * 0.6309) - 55.0969 ] * 1 / 4.184;
                     }
 
                     // add calories to file
@@ -176,7 +173,6 @@ timers.push(timerObj);
 
 
 
-
 // utility functions for this statistic data proccessing
 
 // method to fetch device user data and create stats_device_<device_id>.txt file for statistics
@@ -232,12 +228,7 @@ let clearTimerInterval = (device_id)=>{
     }
 }
 
-let addNewStatsPerHour = (obj)=>{
-    mysqlPool.query(`INSERT INTO stats_per_hour(device_sn, user_id, user_weight, user_age, user_avg_pulse, user_avg_distance, user_avg_speed, user_steps, user_avg_calories, stats_start_time, device_on_time, device_off_time)
-    VALUES()`)
-}
-
-
+// exports
 module.exports = { 
     start_stat,
     clearTimerInterval
