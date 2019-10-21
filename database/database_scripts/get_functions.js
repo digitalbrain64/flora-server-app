@@ -330,7 +330,7 @@ function user_login(callback, credentials, password){
 
 /* Device Functions */
 
-// serving the latest data from device cache data
+// serving the latest data from device cache data for a single device
 // device updates include all information about the device modules and battery percentage
 function get_device_updates(callback, device_sn){
     mysqlPool.query(`SELECT * FROM devices_cache_data WHERE device_sn = ${device_sn}`, function (error, result, fields) {
@@ -341,7 +341,7 @@ function get_device_updates(callback, device_sn){
           if(result.length == 0){
             callback(error, [{
               status : "error",
-              message : `no cache data for device_id : ${device_sn}`
+              message : `no data for device_id : ${device_sn}`
             }])
           }
           else{
@@ -351,37 +351,93 @@ function get_device_updates(callback, device_sn){
     });
 }
 
-
-// function fetches all devices that are currently 'Online'
-function get_all_online_devices(callback, app_user_id){
-    var verified_user = true;
-    mysqlPool.query(`SELECT * FROM app_users WHERE user_id = ${app_user_id}`, function(err, res, fields){
-      if(err){
-        callback(err, res);
+// multi-functional solution
+// flag indicated what devices to get : 'all' = fetch all devices, 'online' = fetch only devices that are online now
+// user id = user with priviliges will get all devices (all avalibale)
+// user with less priviliges will get ONLY the devices that are registered to his account
+function get_all_devices_updates(callback ,flag, app_user_id){
+  // check if user has privileges
+  mysqlPool.query(`SELECT * FROM app_users WHERE user_id = ${app_user_id}`, function(err, res, fields){
+    if(err){
+      callback(err, res);
+    }
+    else{
+      if(res.length != 0){
+        // if user priviliges = 5 user has privileges for this action
+        if(res[0].user_priv == 5){
+          // all-online flag - return all online devices
+          if(flag == "online"){
+            mysqlPool.query(`SELECT devices_cache_data.device_sn ,devices_cache_data.log_time, devices_cache_data.device_status, devices_cache_data.latitude, devices_cache_data.longitude, devices_cache_data.sats, devices_cache_data.pulse,devices_cache_data.battery,devices_cache_data.gps_status,devices_cache_data.bt_status,devices_cache_data.gsm_status, devices_cache_data.sos_status, devices_cache_data.distance, devices_cache_data.avg_speed,device_users.user_id, device_users.first_name, device_users.last_name,device_users.phone_number_1,device_users.phone_number_2
+            FROM devices_cache_data
+            LEFT JOIN device_users
+            ON device_users.device_sn=devices_cache_data.device_sn
+            WHERE devices_cache_data.device_status = 1;`, function (error, result, fields) {
+              if (error){ 
+                return callback(error,result);
+              }
+              else{
+                return callback(error,result);
+              }
+            });
+          }
+          // all flag - return all devices
+          else{
+            mysqlPool.query(`SELECT devices_cache_data.device_sn ,devices_cache_data.log_time, devices_cache_data.device_status, devices_cache_data.latitude, devices_cache_data.longitude, devices_cache_data.sats, devices_cache_data.pulse,devices_cache_data.battery,devices_cache_data.gps_status,devices_cache_data.bt_status,devices_cache_data.gsm_status, devices_cache_data.sos_status, devices_cache_data.distance, devices_cache_data.avg_speed,device_users.user_id, device_users.first_name, device_users.last_name,device_users.phone_number_1,device_users.phone_number_2
+            FROM devices_cache_data
+            LEFT JOIN device_users
+            ON device_users.device_sn=devices_cache_data.device_sn;`, function (error, result, fields) {
+              if (error){ 
+                return callback(error,result);
+              }
+              else{
+                return callback(error,result);
+              }
+            });
+          }
+        }
+        // if user priviliges = 1 regular app user has limited privileges
+        // will get only the devices that are registered on his account
+        else if (res[0].user_priv == 1){
+          // all-online flag - return all online devices
+          if(flag == "online"){
+            mysqlPool.query(`SELECT devices_cache_data.device_sn ,devices_cache_data.log_time, devices_cache_data.device_status, devices_cache_data.latitude, devices_cache_data.longitude, devices_cache_data.sats, devices_cache_data.pulse,devices_cache_data.battery,devices_cache_data.gps_status,devices_cache_data.bt_status,devices_cache_data.gsm_status, devices_cache_data.sos_status, devices_cache_data.distance, devices_cache_data.avg_speed
+            FROM devices_cache_data
+            LEFT JOIN app_user_devices
+            ON app_user_devices.device_id = devices_cache_data.device_sn
+            WHERE app_user_devices.user_id = ${app_user_id} AND devices_cache_data.device_status=1;`, function (error, result, fields) {
+              if (error){ 
+                return callback(error,result);
+              }
+              else{
+                return callback(error,result);
+              }
+            });
+          }
+          // all flag - return all devices
+          else{
+            mysqlPool.query(`SELECT devices_cache_data.device_sn ,devices_cache_data.log_time, devices_cache_data.device_status, devices_cache_data.latitude, devices_cache_data.longitude, devices_cache_data.sats, devices_cache_data.pulse,devices_cache_data.battery,devices_cache_data.gps_status,devices_cache_data.bt_status,devices_cache_data.gsm_status, devices_cache_data.sos_status, devices_cache_data.distance, devices_cache_data.avg_speed
+            FROM devices_cache_data
+            LEFT JOIN app_user_devices
+            ON app_user_devices.device_id = devices_cache_data.device_sn
+            WHERE app_user_devices.user_id = ${app_user_id};`, function (error, result, fields) {
+              if (error){ 
+                return callback(error,result);
+              }
+              else{
+                return callback(error,result);
+              }
+            });
+          }
+        }
       }
       else{
-        if(res[0].user_priv == 5){
-          mysqlPool.query(`SELECT devices_cache_data.device_sn ,devices_cache_data.log_time, devices_cache_data.device_status, devices_cache_data.latitude, devices_cache_data.longitude, devices_cache_data.sats, devices_cache_data.pulse,devices_cache_data.battery,devices_cache_data.gps_status,devices_cache_data.bt_status,devices_cache_data.gsm_status, devices_cache_data.sos_status, devices_cache_data.distance, devices_cache_data.avg_speed,device_users.user_id, device_users.first_name, device_users.last_name,device_users.phone_number_1,device_users.phone_number_2
-          FROM devices_cache_data
-          LEFT JOIN device_users
-          ON device_users.device_sn=devices_cache_data.device_sn
-          WHERE devices_cache_data.device_status = 1;`, function (error, result, fields) {
-            if (error){ 
-               return callback(error,result);
-            }
-            else{
-              return callback(error,result);
-            }
-          });
-        }
-        else{
-          callback(err, [{
-            status: "error",
-            message: "user has no privileges for this function"
-          }])
-        }
+        callback(err, [{
+          status: "error",
+          message: `user with id: ${app_user_id} -- not found`
+        }])
       }
-    });
+    }
+  });
 }
 
 // a special function similar to get_device_updates:
@@ -419,6 +475,75 @@ function get_device_updates_and_check_sos_status(callback, device_id){
     });
 }
 
+// get statistic for single device by device id
+function get_device_statistics(callback, device_sn){
+  mysqlPool.query(`SELECT * FROM device_statistic WHERE device_sn = ${device_sn}`, function(err, result, fields){
+    if(err){
+      return callback(err, result);
+    }
+    else{
+      callback(err, result);
+    }
+  })
+}
+
+function get_all_devices_statistics(callback, app_user_id){
+  mysqlPool.query(`SELECT * FROM app_users WHERE user_id = ${app_user_id}`, function(err, res, fields){
+    if(err){
+      return callback(err, res);
+    }
+    else{
+      if(res.length != 0){
+        // if user priviliges = 5 user has privileges for this action
+        if(res[0].user_priv == 5){
+          // all-online flag - return all online devices
+          mysqlPool.query(`SELECT * FROM device_statistic;`, function (error, result, fields) {
+            if (error){ 
+              return callback(error,result);
+            }
+            else{
+              return callback(error,result);
+            }
+          });
+        }
+        else if(res[0].user_priv == 1){
+          mysqlPool.query(`SELECT * FROM device_statistic
+          LEFT JOIN app_user_devices
+          ON app_user_devices.device_id = device_statistic.device_sn
+          WHERE app_user_devices.user_id = ${app_user_id};`, function (error, result, fields) {
+            if (error){ 
+              return callback(error,result);
+            }
+            else{
+              return callback(error,result);
+            }
+          });
+        }
+          // all flag - return all devices
+          else{
+            mysqlPool.query(`SELECT devices_cache_data.device_sn ,devices_cache_data.log_time, devices_cache_data.device_status, devices_cache_data.latitude, devices_cache_data.longitude, devices_cache_data.sats, devices_cache_data.pulse,devices_cache_data.battery,devices_cache_data.gps_status,devices_cache_data.bt_status,devices_cache_data.gsm_status, devices_cache_data.sos_status, devices_cache_data.distance, devices_cache_data.avg_speed,device_users.user_id, device_users.first_name, device_users.last_name,device_users.phone_number_1,device_users.phone_number_2
+            FROM devices_cache_data
+            LEFT JOIN device_users
+            ON device_users.device_sn=devices_cache_data.device_sn;`, function (error, result, fields) {
+              if (error){ 
+                return callback(error,result);
+              }
+              else{
+                return callback(error,result);
+              }
+            });
+          }
+        }
+        else{
+          callback(err, [{
+            status: "error",
+            message: `user with id: ${app_user_id} -- not found`
+          }])
+        }
+      }
+  });
+}
+
 
 
 module.exports = {
@@ -435,7 +560,9 @@ module.exports = {
     get_user_contacts,
     get_app_user_devices,
     get_device_updates_and_check_sos_status,
-    get_all_online_devices
+    get_all_devices_updates,
+    get_device_statistics,
+    get_all_devices_statistics
   };
   
   

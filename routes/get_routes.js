@@ -29,7 +29,27 @@ router.get('/getLocationHistory', (req, res, next)=>{
 
 // route to get recent data from device_cache_data
 router.get('/getDeviceUpdates', (req, res, next) =>{
-  if(req.query.device_sn){
+  if(req.query.flag && req.query.app_user_id && !req.query.device_sn){
+    if(req.query.flag == "all" || req.query.flag == "online"){
+      getFunctions.get_all_devices_updates(function(err, result){
+        if (err){
+          res.send([{
+            status : "error",
+            message : err
+          }])
+        }
+        else
+          res.send(result);
+      }, req.query.flag, req.query.app_user_id);
+    }
+    else{
+      res.send([{
+        status:"error",
+        message:"please provide a correct flag"
+      }])
+    }
+  }
+  else if (!req.query.flag && !req.query.app_user_id && req.query.device_sn){
     getFunctions.get_device_updates(function (err, result) {
       if (err){
         res.send([{
@@ -44,7 +64,7 @@ router.get('/getDeviceUpdates', (req, res, next) =>{
   else{
     res.send([{
       status : "error",
-      message : "please provide device serial number"
+      message : "please provide device serial number or a combination of flag and application user ID"
     }])
   }
 });
@@ -342,9 +362,21 @@ router.get('/getDeviceUpdateCheckSosStatus', (req, res, next)=>{
   }
 });
 
-router.get('/getAllOnlineDevices', (req, res, fields)=>{
-  if(req.query.app_user_id){
-    getFunctions.get_all_online_devices(function (err, result) {
+router.get('/getDeviceStatistic', (req, res, next)=>{
+  if(!req.query.app_user_id && req.query.device_sn){
+      getFunctions.get_device_statistics(function(err, result){
+        if (err){
+          res.send([{
+            status : "error",
+            message : err
+          }])
+        }
+        else
+          res.send(result);
+      }, req.query.device_sn);
+  }
+  else if (req.query.app_user_id && !req.query.device_sn){
+    getFunctions.get_all_devices_statistics(function (err, result) {
       if (err){
         res.send([{
           status : "error",
@@ -358,9 +390,9 @@ router.get('/getAllOnlineDevices', (req, res, fields)=>{
   else{
     res.send([{
       status : "error",
-      message : "please provide device serial number"
+      message : "please provide device serial number or application user ID"
     }])
   }
-});
+})
 
 module.exports = router;
