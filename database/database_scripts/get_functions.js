@@ -524,7 +524,7 @@ function get_sos_reports(callback, app_user_id){
               return callback(err, res);
             }
             else{
-              callback(err, result);
+              callback(err, res);
             }
           });
         }
