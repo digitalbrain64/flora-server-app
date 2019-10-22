@@ -269,7 +269,7 @@ let set_device_status = (device_sn,deviceStatus)=>{
 }
 
 
-function post_sos_report(reportObj){
+function post_sos_incident(reportObj){
     var report_date = new Date();
     var report_log_time = report_date.toISOString().slice(0, 19).replace('T', ' ');
     // get current lat lng from cache by device_sn
@@ -277,11 +277,11 @@ function post_sos_report(reportObj){
       if (error){ 
           return callback(error, result);
       }
-      var lat = result.latitude, lng = result.longitude;
-      var pulse = result.pulse;
+      var lat = result[0].latitude, lng = result[0].longitude;
+      var pulse = result[0].pulse;
       var sql = `INSERT INTO 
-        sos_reports (device_sn ,log_time, employee_id, latitude, longitude ,pulse, amb_dispatched, sos_description, relatives_alerted) 
-        VALUES (${reportObj.GSTSerial},"${report_log_time}","${lat}","${lng}",${pulse},${reportObj.amb}, "${reportObj.sos_description}", ${reportObj.relatives_alerted});`;
+        sos_incedents (device_sn ,log_time, employee_id, latitude, longitude ,pulse, amb_dispatched, sos_description) 
+        VALUES (${reportObj.GSTSerial},"${report_log_time}","${lat}","${lng}",${pulse},${reportObj.amb}, "${reportObj.sos_description}");`;
         mysqlPool.query(sql, function (err, result) {
           if (err) 
              throw err;
@@ -289,6 +289,7 @@ function post_sos_report(reportObj){
         });
     });
 }
+
 
 
 
@@ -420,5 +421,5 @@ module.exports = {
     post_sos_report,
     post_add_new_dev_user,
     update_device_cache_data,
-    post_sos_report
+    post_sos_incident
 };

@@ -31,8 +31,21 @@ router.post('/postNewDeviceUser', (req, res, next) => {
 })
 
 
-router.post('/postSosReport', (req, res, next)=>{
-    postFunctions.post_sos_report(req.body);
+router.post('/postSosIncident', (req, res, next)=>{
+    postFunctions.post_sos_incident(function(err, result){
+        if(err){
+            res.send([{
+                status: "error",
+                message: err
+            }])
+            next();
+        }
+        else{
+            res.send(result);
+            next();
+        }
+    },req.body);
 })
+
 
 module.exports = router;

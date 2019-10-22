@@ -502,7 +502,7 @@ function get_all_devices_statistics(callback, app_user_id){
               return callback(error,result);
             }
             else{
-              return callback(error,result);
+              callback(error,result);
             }
           });
         }
@@ -515,7 +515,7 @@ function get_all_devices_statistics(callback, app_user_id){
               return callback(error,result);
             }
             else{
-              return callback(error,result);
+              callback(error,result);
             }
           });
         }
@@ -529,7 +529,7 @@ function get_all_devices_statistics(callback, app_user_id){
                 return callback(error,result);
               }
               else{
-                return callback(error,result);
+                callback(error,result);
               }
             });
           }
@@ -542,6 +542,37 @@ function get_all_devices_statistics(callback, app_user_id){
         }
       }
   });
+}
+
+
+function get_sos_reports(callback, app_user_id){
+  mysqlPool.query(`SELECT * FROM app_users WHERE user_id = ${app_user_id}`, function(err, res, fields){
+    if(err){
+      return callback(err, res);
+    }
+    else{
+      if(res.length != 0){
+        // if user priviliges = 5 user has privileges for this action
+        if(res[0].user_priv == 5){
+          mysqlPool.query(`SELECT * FROM sos_reports;`, function(err, res, fields){
+            if(err){
+              return callback(err, res);
+            }
+            else{
+              callback(err, result);
+            }
+          });
+        }
+        else{
+          callback(err, [{
+            status:"error",
+            message: "user has no privileges for this action"
+          }])
+        }
+      }
+    }
+  });
+  
 }
 
 
@@ -562,7 +593,8 @@ module.exports = {
     get_device_updates_and_check_sos_status,
     get_all_devices_updates,
     get_device_statistics,
-    get_all_devices_statistics
+    get_all_devices_statistics,
+    get_sos_reports
   };
   
   
