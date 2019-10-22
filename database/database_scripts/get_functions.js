@@ -440,41 +440,6 @@ function get_all_devices_updates(callback ,flag, app_user_id){
   });
 }
 
-// a special function similar to get_device_updates:
-// fetches the most recent data about the GST device and checks if the sos_status (sos cutton) was pessed
-// if the button was pressed (sos_status = 1) then fetches the information about the device user
-// and adds it to the response JSON string 
-function get_device_updates_and_check_sos_status(callback, device_id){
-    mysqlPool.query(`SELECT * FROM devices_cache_data WHERE device_sn = ${device_id}`, function (error, result, fields) {
-      if (error){ 
-         return callback(error,result);
-      }
-      else{
-        if(result.length == 0){
-          callback(error, [{
-            status : "error",
-            message : `no cache data for device_id : ${device_id}`
-          }])
-        }
-        else{
-          if(result[0].sos_status == 1){
-            mysqlPool.query(`SELECT * FROM device_users WHERE device_sn = ${device_id}`, function(err, devResult, fields){
-              if(err){
-                return callback(err, result);
-              }
-              else{
-                  callback(err, [result[0],devResult[0]] );
-              }
-            });
-          }
-          else{
-            callback(error, result);
-          }
-        }
-      }
-    });
-}
-
 // get statistic for single device by device id
 function get_device_statistics(callback, device_sn){
   mysqlPool.query(`SELECT * FROM device_statistic WHERE device_sn = ${device_sn}`, function(err, result, fields){
@@ -590,7 +555,6 @@ module.exports = {
     get_device_users,
     get_user_contacts,
     get_app_user_devices,
-    get_device_updates_and_check_sos_status,
     get_all_devices_updates,
     get_device_statistics,
     get_all_devices_statistics,

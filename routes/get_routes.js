@@ -341,27 +341,6 @@ router.get('/getDeviceUserContacts', (req, res, next)=>{
   }
 });
 
-router.get('/getDeviceUpdateCheckSosStatus', (req, res, next)=>{
-  if(req.query.device_id){
-    getFunctions.get_device_updates_and_check_sos_status(function (err, result) {
-      if (err){
-        res.send([{
-          status : "error",
-          message : err
-        }])
-      }
-      else
-        res.send(result);
-    }, req.query.device_id);
-  }
-  else{
-    res.send([{
-      status : "error",
-      message : "please provide device serial number"
-    }])
-  }
-});
-
 router.get('/getDeviceStatistic', (req, res, next)=>{
   if(!req.query.app_user_id && req.query.device_sn){
       getFunctions.get_device_statistics(function(err, result){
@@ -394,5 +373,27 @@ router.get('/getDeviceStatistic', (req, res, next)=>{
     }])
   }
 })
+
+router.get('/getSosReports', (req, res, next)=>{
+  if(req.query.app_user_id){
+    getFunctions.get_sos_reports(function(err, result){
+      if (err){
+        res.send([{
+          status : "error",
+          message : err
+        }])
+      }
+      else
+        res.send(result);
+    }, req.query.app_user_id);
+}
+else{
+  res.send([{
+    status:"error",
+    message:"please provide application user id"
+  }])
+}
+
+});
 
 module.exports = router;
