@@ -269,7 +269,7 @@ let set_device_status = (device_sn,deviceStatus)=>{
 }
 
 
-function post_sos_incident(reportObj){
+function post_sos_report(reportObj){
     var report_date = new Date();
     var report_log_time = report_date.toISOString().slice(0, 19).replace('T', ' ');
     // get current lat lng from cache by device_sn
@@ -421,5 +421,4 @@ module.exports = {
     post_sos_report,
     post_add_new_dev_user,
     update_device_cache_data,
-    post_sos_incident
 };
