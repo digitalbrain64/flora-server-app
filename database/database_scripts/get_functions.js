@@ -212,6 +212,45 @@ function get_lowest_pulse(callback, device_id){
     })
 }
 
+function get_sos_incidents(callback, app_user_id){
+    // check if user has privileges
+    mysqlPool.query(`SELECT * FROM app_users WHERE user_id = ${app_user_id}`, function(err, res, fields){
+      if(err){
+        callback(err, res);
+      }
+      else{
+        if(res.length != 0){
+          // if user priviliges = 5 user has privileges for this action
+          // combine data from 3 tables: sos_incidents, device_users, devices_cache_data
+          if(res[0].user_priv == 5){
+            mysqlPool.query(`SELECT sos_incidents.* ,device_users.first_name, device_users.last_name, devices_cache_data.device_phone_number
+            FROM sos_incidents
+            INNER JOIN device_users ON sos_incidents.device_sn = device_users.device_sn
+            INNER JOIN devices_cache_data ON device_users.device_sn = devices_cache_data.device_sn;`, function(err, result, fields){
+              if(err) return callback(err, result);
+              else{
+                callback(err, result);
+              }
+            })
+          }
+          else{
+            callback(err, [{
+              status:"error",
+              message: "user has no privileges for this action"
+            }])
+          }
+
+        }
+        else{
+          callback(err, [{
+            status:"error",
+            message: "user not found - please provide a valid application user id"
+          }])
+        }
+      }
+    });
+}
+
 
 // get weather data by latitude and longitude
 // weather is provided by OpenWeatherMap API
@@ -273,7 +312,7 @@ function get_app_user_account(callback, user_id){
 // every app user probably has some devices registered on his user account
 // this function will fetch ONLY the devices that are registered on the specific application user account
 function get_app_user_devices(callback, user_id){
-    mysqlPool.query(`SELECT device_users.device_sn, device_users.first_name, device_users.last_name, device_users.phone_number_1, device_users.phone_number_2,device_users.address,app_user_devices.date_of_activation
+    mysqlPool.query(`SELECT device_users.*,app_user_devices.date_of_activation
     FROM app_user_devices
     LEFT JOIN device_users
     ON app_user_devices.device_id = device_users.device_sn
@@ -299,12 +338,14 @@ function get_app_user_devices(callback, user_id){
 function user_login(callback, credentials, password){
     var sql = "";
   
+    var credToLower = credentials.toLowerCase();
     if(credentials.includes("@"))
       // search by email
-      sql = `SELECT * FROM app_users WHERE user_email = '${credentials}' AND user_pass = '${password}'`;
+      
+      sql = `SELECT * FROM app_users WHERE user_email = '${credToLower}' AND user_pass = '${password}'`;
     else
       // search by username
-      sql = `SELECT * FROM app_users WHERE user_name = '${credentials}' AND user_pass = '${password}'`;
+      sql = `SELECT * FROM app_users WHERE user_name = '${credToLower}' AND user_pass = '${password}'`;
     
       mysqlPool.query(sql, function(error, result, fields){
       if(error){
@@ -367,7 +408,7 @@ function get_all_devices_updates(callback ,flag, app_user_id){
         if(res[0].user_priv == 5){
           // all-online flag - return all online devices
           if(flag == "online"){
-            mysqlPool.query(`SELECT devices_cache_data.device_sn ,devices_cache_data.log_time, devices_cache_data.device_status, devices_cache_data.latitude, devices_cache_data.longitude, devices_cache_data.sats, devices_cache_data.pulse,devices_cache_data.battery,devices_cache_data.gps_status,devices_cache_data.bt_status,devices_cache_data.gsm_status, devices_cache_data.sos_status, devices_cache_data.distance, devices_cache_data.avg_speed,device_users.user_id, device_users.first_name, device_users.last_name,device_users.phone_number_1,device_users.phone_number_2
+            mysqlPool.query(`SELECT devices_cache_data.*,device_users.user_id, device_users.first_name, device_users.last_name,device_users.phone_number_1,device_users.phone_number_2
             FROM devices_cache_data
             LEFT JOIN device_users
             ON device_users.device_sn=devices_cache_data.device_sn
@@ -558,7 +599,8 @@ module.exports = {
     get_all_devices_updates,
     get_device_statistics,
     get_all_devices_statistics,
-    get_sos_reports
+    get_sos_reports,
+    get_sos_incidents
   };
   
   

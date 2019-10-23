@@ -396,4 +396,25 @@ else{
 
 });
 
+router.get('/getRealTimeSosIncidents', (req, res, next)=>{
+  if(req.query.app_user_id){
+    getFunctions.get_sos_incidents(function(err, result){
+      if (err){
+        res.send([{
+          status : "error",
+          message : err
+        }])
+      }
+      else
+        res.send(result);
+    }, req.query.app_user_id);
+  }
+  else{
+    res.send([{
+      status:"error",
+      message:"please provide application user id"
+    }])
+  }
+});
+
 module.exports = router;

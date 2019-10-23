@@ -20,6 +20,29 @@ function update_device_cache_data(jsonObj){
     var date = new Date();
     var log_time = date.toISOString().slice(0, 19).replace('T', ' ');
     var currentUpdateTime = log_time;
+
+    // if emergancy button has been pressed
+    // create new record in sos_incidents table
+    if(jsonObj.sos_status == 1){
+      // check incident status: if there is already an incident from this device with status "open" of "handle" - dont add new incident
+      // if there are incidents from this device with status "closed" or no incidents at all from this device - add new incident
+      mysqlPool.query(`SELECT * FROM sos_incidents WHERE device_sn = ${jsonObj.GSTSerial} AND status="open" OR status="handle"`,function(err, result, fields){
+        if(err) throw err;
+        else{
+          // if there is a new incidient and it is not a repeated insident from same device
+          // add new incident
+          if(result.length == 0){
+            mysqlPool.query(`INSERT INTO sos_incidents(device_sn, latitude, longitude, pulse, time_log, status)
+            VALUES(${jsonObj.GSTSerial}, "${jsonObj.latitude}", "${jsonObj.longitude}", ${jsonObj.pulse}, "${log_time}", "open");`, function(err, result, fields){
+              if(err) throw err;
+              else{
+                console.log(`device : ${jsonObj.GSTSerial} - emergancy!!`);
+              }
+            })
+          }
+        }
+      })
+    }
   
     calcAvgSpeedAndUpdateCacheTable(jsonObj, log_time);  
   
@@ -355,6 +378,8 @@ let calcAvgSpeedAndUpdateCacheTable = (jsonObj, time_stamp)=>{
             deviceObj[0].update_counter +=1;
             deviceObj[0].distance +=distance;
             deviceObj[0].total_pulse +=result[0].pulse;
+            deviceObj[0].latitude = curr_lat;
+            deviceObj[0].longitude = curr_lon;
     
             fs.writeFile(`./database/database_files/devices_stats/stats_device_${deviceObj[0].device_id}.txt`, JSON.stringify(deviceObj) , function(err, data){
               if (err) throw err;
