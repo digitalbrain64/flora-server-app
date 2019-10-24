@@ -112,7 +112,7 @@ async function start_stat(jsonObj,time_stamp){
                     var avgPulsePerTimeSlice = jsonDataFromFile[0].avg_pulse;
 
 
-                    
+
                     /* The formulas provided by: Journal of Sport Science (url: http://www.calories-calculator.net/Calculator_Formulars.html) */
                     // Accurate Calorie Burned Calculator Formula for Men(kCal):
                     /* Calorie Burned = [ (AGE_IN_YEAR x 0.2017) + (WEIGHT_IN_KILOGRAM x 0.1988)+ (HEART_BEAT_PER_MINUTE x 0.6309) - 55.0969] x DURATION_IN_MINUTE / 4.184 */
@@ -141,7 +141,7 @@ async function start_stat(jsonObj,time_stamp){
                     // update the database table with current statistic data
                     mysqlPool.query(`UPDATE device_statistic
                     SET avg_pulse = ${parseInt(jsonDataFromFile[0].avg_pulse)},
-                    avg_pulse_daily = ${parseInt(jsonDataFromFile[0].daily_avg_pulse)},
+                    avg_pulse_daily = ${parseInt(jsonDataFromFile[0].avg_pulse_daily)},
                     total_distance = ${parseFloat(jsonDataFromFile[0].total_distance).toFixed(3)},
                     user_age = ${userAge},
                     avg_speed = ${parseFloat(jsonDataFromFile[0].avg_speed).toFixed(3)},
