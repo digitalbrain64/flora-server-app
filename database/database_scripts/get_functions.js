@@ -592,7 +592,7 @@ function get_highest_lowest_pulse(callback, device_sn){
     else{
       var userBirthDay = new Date(Date.parse(result[0].birthday));
       var currDate = new Date();
-      final_res.gender = result[0].gender?"female":"male";
+      final_res.gender = (result[0].gender == 1)?"female":"male";
       final_res.first_name = result[0].first_name;
       final_res.last_name = result[0].last_name;
       final_res.weight = result[0].weight;
