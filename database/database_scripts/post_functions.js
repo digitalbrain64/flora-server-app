@@ -16,7 +16,7 @@ var mysqlPool = mysql.createPool("mysql://bbf377481226a0:eaef03fd@us-cdbr-iron-e
 // function gets the data from the GST device and monitors when the device gets offline
 // function also passes the data from the GST device and a timestamp (current date and time) to a function that
 // handles it and adds the data to devices_cache_data table
-function update_device_cache_data(jsonObj){
+async function update_device_cache_data(jsonObj){
     var date = new Date();
     var log_time = date.toISOString().slice(0, 19).replace('T', ' ');
     var currentUpdateTime = log_time;
@@ -52,82 +52,7 @@ function update_device_cache_data(jsonObj){
     // by comparing the update time in the file with the current time and 
     // if the difference is longer then 6 second - device has gone offline
   
-    // read from 'updateTime' file - get all content of the file
-    fs.readFile('./database/database_files/util_files/updateTimeDevices.txt', 'utf8', function(err, data) {
-      if (err) throw err;
-  
-      var updateDeviceJsonArr;
-  
-      if(data == ""){
-        updateDeviceJsonArr = [];
-        var updateJsonTime = {
-          deviceId:jsonObj.GSTSerial, // deviceId to identify the device
-          lastUpdateTime:currentUpdateTime, // current time for comparing update times
-          historyCounter:0 // history counter to know when to add new record to deviceLocatioHistory MySql table
-        }
-        updateDeviceJsonArr.push(updateJsonTime);
-  
-        // write to file - parse the object to JSON object
-        fs.writeFile('./database/database_files/util_files/updateTimeDevices.txt', JSON.stringify(updateDeviceJsonArr), function (err) {
-          if (err) throw err;
-        });
-      }
-      else{
-        // parse to JsonArr and store in variable
-        updateDeviceJsonArr = JSON.parse(data); // data is stored as JSON array
-        var i;
-        // for loop - find the object with the same deviceId
-        for(i=0; i<updateDeviceJsonArr.length; i++){
-          // if found
-          if(updateDeviceJsonArr[i].deviceId == jsonObj.GSTSerial){
-            // update the lastUpdateTime value
-            updateDeviceJsonArr[i].lastUpdateTime = currentUpdateTime;
-            updateDeviceJsonArr[i].historyCounter = updateDeviceJsonArr[i].historyCounter+1
-  
-            /* insert record to device location history table */
-            // new record is inserted every 5 (or more) minutes
-            // historyCounter value is +1 every time the GST device sends new data
-            // device send data every 3 seconds
-            // we want to save a new history record every 5 min
-            // 3sec*100histroyCounter = 5min
-            if(updateDeviceJsonArr[i].historyCounter >= 100){
-              // MySql command - inset into device_location_history table new record
-              var sql = `INSERT INTO 
-              devices_location_history (device_sn ,log_time, latitude, longitude ,pulse) 
-              VALUES (${jsonObj.GSTSerial},"${log_time}","${jsonObj.latitude}","${jsonObj.longitude}","${jsonObj.pulse}");`;
-  
-              // execute command
-              mysqlPool.query(sql, function (err, result) {
-                if (err) 
-                throw err;
-                // output to terminal for debugging purposes
-                console.log(`device id: ${jsonObj.GSTSerial} - location history record inserted`);
-              });
-  
-              // update historyCounter for current device to 0
-              updateDeviceJsonArr[i].historyCounter = 0;
-          }
-          break; // break - no need to loop any further
-        }
-      }
-      // if object not found in the array - no JSON object with same deviceId - we must add new object
-      if(i == updateDeviceJsonArr.length){
-        // create new object
-        var updateJsonTime = {
-          deviceId:jsonObj.GSTSerial,
-          lastUpdateTime:currentUpdateTime,
-          historyCounter:0
-        }
-        // push it to Json Array - using .push() as with any array in JS
-        updateDeviceJsonArr.push(updateJsonTime);
-      }
-  
-      // write to file - write the updated Json Array - overwrite the existing data of the txt file
-      fs.writeFile('./database/database_files/util_files/updateTimeDevices.txt', JSON.stringify(updateDeviceJsonArr), function (err) {
-        if (err) throw err;
-      });
-    }
-  });
+    await update_devices_status_file(jsonObj,currentUpdateTime);
   
   
   // async setTimeOut will chack each 8 seconds if devices gone offline
@@ -182,7 +107,10 @@ function post_add_new_dev_user(callback,devUserObj){
     OR user_id = "${devUserObj.user_id}";`,
     function(errorSN, resSN, fields){
       if(errorSN){
-        callback(errorSN, resSN);
+        callback(errorSN, [{
+          status : "error",
+          message : errorSN
+         }]);
       }
       else{
         // if length is NOT 0 then ID and serial number are NOT unique
@@ -257,7 +185,7 @@ function post_add_new_dev_user(callback,devUserObj){
 // when the device status is changed to 0 - device statistic file from ./routes/database/database_files/devices_stats
 // is cleared (content of file it removed)
 // function also called another function to stop the statistic measurement for the device that has been disconnected
-let set_device_status = (device_sn,deviceStatus)=>{
+async function set_device_status(device_sn,deviceStatus){
 
     // clear the device stats file
     fs.writeFile(`./database/database_files/devices_stats/stats_device_${device_sn}.txt`,"", function(err, data){
@@ -313,6 +241,85 @@ function post_sos_report(reportObj){
     });
 }
 
+/* updating the last update time of the device inside /updateTimeDevices */
+    // the goal is to store last update time about all connected devices
+    // this way we can check if the device was disconnected or not
+    // by comparing the update time in the file with the current time and 
+    // if the difference is longer then 6 second - device has gone offline
+function update_devices_status_file(jsonObj,currentUpdateTime){
+  var data = fs.readFileSync('./database/database_files/util_files/updateTimeDevices.txt', 'utf8');
+
+    var updateDeviceJsonArr;
+
+    if(data == ""){
+      updateDeviceJsonArr = [];
+      var updateJsonTime = {
+        deviceId:jsonObj.GSTSerial, // deviceId to identify the device
+        lastUpdateTime:currentUpdateTime, // current time for comparing update times
+        historyCounter:0 // history counter to know when to add new record to deviceLocatioHistory MySql table
+      }
+      updateDeviceJsonArr.push(updateJsonTime);
+
+      // write to file - parse the object to JSON object
+      fs.writeFileSync('./database/database_files/util_files/updateTimeDevices.txt', JSON.stringify(updateDeviceJsonArr));
+    }
+    else{
+      // parse to JsonArr and store in variable
+      updateDeviceJsonArr = JSON.parse(data); // data is stored as JSON array
+      var i;
+      // for loop - find the object with the same deviceId
+      for(i=0; i<updateDeviceJsonArr.length; i++){
+        // if found
+        if(updateDeviceJsonArr[i].deviceId == jsonObj.GSTSerial){
+          // update the lastUpdateTime value
+          updateDeviceJsonArr[i].lastUpdateTime = currentUpdateTime;
+          updateDeviceJsonArr[i].historyCounter = updateDeviceJsonArr[i].historyCounter+1
+
+          /* insert record to device location history table */
+          // new record is inserted every 5 (or more) minutes
+          // historyCounter value is +1 every time the GST device sends new data
+          // device send data every 3 seconds
+          // we want to save a new history record every 5 min
+          // 3sec*100histroyCounter = 5min
+          if(updateDeviceJsonArr[i].historyCounter >= 100){
+            // MySql command - inset into device_location_history table new record
+            var sql = `INSERT INTO 
+            devices_location_history (device_sn ,log_time, latitude, longitude ,pulse) 
+            VALUES (${jsonObj.GSTSerial},"${currentUpdateTime}","${jsonObj.latitude}","${jsonObj.longitude}","${jsonObj.pulse}");`;
+
+            // execute command
+            mysqlPool.query(sql, function (err, result) {
+              if (err) 
+              throw err;
+              // output to terminal for debugging purposes
+              console.log(`device id: ${jsonObj.GSTSerial} - location history record inserted`);
+            });
+
+            // update historyCounter for current device to 0
+            updateDeviceJsonArr[i].historyCounter = 0;
+        }
+        break; // break - no need to loop any further
+      }
+    }
+    // if object not found in the array - no JSON object with same deviceId - we must add new object
+    if(i == updateDeviceJsonArr.length){
+      // create new object
+      var updateJsonTime = {
+        deviceId:jsonObj.GSTSerial,
+        lastUpdateTime:currentUpdateTime,
+        historyCounter:0
+      }
+      // push it to Json Array - using .push() as with any array in JS
+      updateDeviceJsonArr.push(updateJsonTime);
+    }
+
+    // write to file - write the updated Json Array - overwrite the existing data of the txt file
+    fs.writeFileSync('./database/database_files/util_files/updateTimeDevices.txt', JSON.stringify(updateDeviceJsonArr));
+  }
+
+
+}
+
 
 
 
@@ -320,7 +327,7 @@ function post_sos_report(reportObj){
 /* utility functions - helper functions for data processing and devices managemnt */
 
 // calculates average speed between two points on a map (lat,lng) and update the devices cache data table
-let calcAvgSpeedAndUpdateCacheTable = (jsonObj, time_stamp)=>{
+async function calcAvgSpeedAndUpdateCacheTable(jsonObj, time_stamp){
     // get prevoius coordinates and device status
     mysqlPool.query(`SELECT * FROM devices_cache_data WHERE device_sn=${jsonObj.GSTSerial}`, function(err, result, fields){
       if(err)
@@ -364,8 +371,7 @@ let calcAvgSpeedAndUpdateCacheTable = (jsonObj, time_stamp)=>{
           
           // statistic data - this function also adds pulse and distance to the correct file in the database_files/devices_stats/stats_device_<deviceId>.txt
           // this is needed for later statistic measurments
-          fs.readFile(`./database/database_files/devices_stats/stats_device_${jsonObj.GSTSerial}.txt`, function(err, data){
-            if(err) throw err;
+          var data = fs.readFileSync(`./database/database_files/devices_stats/stats_device_${jsonObj.GSTSerial}.txt`);
     
             var deviceObj;
             if(data == ""){
@@ -375,17 +381,23 @@ let calcAvgSpeedAndUpdateCacheTable = (jsonObj, time_stamp)=>{
               deviceObj = JSON.parse(data);
             }
     
-            deviceObj[0].update_counter +=1;
-            deviceObj[0].distance +=distance;
-            deviceObj[0].total_pulse +=result[0].pulse;
-            deviceObj[0].latitude = curr_lat;
-            deviceObj[0].longitude = curr_lon;
+            try {
+              deviceObj[0].update_counter +=1;
+              deviceObj[0].distance +=distance;
+              deviceObj[0].total_pulse +=result[0].pulse;
+              deviceObj[0].latitude = curr_lat;
+              deviceObj[0].longitude = curr_lon;
+              fs.writeFile(`./database/database_files/devices_stats/stats_device_${deviceObj[0].device_id}.txt`, JSON.stringify(deviceObj) , function(err, data){
+                if (err) throw err;
+              })
+              
+            } catch (error) {
+              set_device_status(result[0].device_sn, 0);
+            }
+            
     
-            fs.writeFile(`./database/database_files/devices_stats/stats_device_${deviceObj[0].device_id}.txt`, JSON.stringify(deviceObj) , function(err, data){
-              if (err) throw err;
-            })
+            
 
-          });
         }
         // if device was offline before - start the start_stat function and pass the data object and time stamp to the function
         else{

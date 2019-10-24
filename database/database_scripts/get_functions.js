@@ -581,6 +581,45 @@ function get_sos_reports(callback, app_user_id){
   
 }
 
+function get_highest_lowest_pulse(callback, device_sn){
+  // fetch device user brief info
+  var final_res = {};
+  mysqlPool.query(`SELECT device_users.first_name, device_users.last_name, device_users.weight, device_users.birthday
+  FROM device_users WHERE device_sn = ${device_sn}`, function(err, result, fields){
+    if(err){
+      return callback(err, result);
+    }
+    else{
+      var userBirthDay = new Date(Date.parse(result[0].birthday));
+      var currDate = new Date();
+
+      final_res.first_name = result[0].first_name;
+      final_res.last_name = result[0].last_name;
+      final_res.weight = result[0].weight;
+      final_res.user_age = currDate.getFullYear() - userBirthDay.getFullYear();
+      // fetch highest pulse
+      mysqlPool.query(`SELECT * FROM device_highest_pulse WHERE device_sn = ${device_sn}`, function(err, result, fields){
+        if(err){
+          return callback(err, result);
+        }
+        else{
+          // add to final result
+          final_res.highest_pulse = result[0];
+          mysqlPool.query(`SELECT * FROM device_lowest_pulse WHERE device_sn = ${device_sn}`, function(err, result, fields){
+            if(err){
+              return callback(err, result);
+            }
+            else{
+              final_res.lowest_pulse = result[0];
+              callback(err, final_res);
+            }
+          })
+        }
+      })
+    }
+  })
+}
+
 
 
 module.exports = {
@@ -600,7 +639,8 @@ module.exports = {
     get_device_statistics,
     get_all_devices_statistics,
     get_sos_reports,
-    get_sos_incidents
+    get_sos_incidents,
+    get_highest_lowest_pulse
   };
   
   

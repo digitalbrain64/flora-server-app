@@ -255,6 +255,21 @@ router.get('/getHighestPulse', (req, res, next)=>{
   
 });
 
+router.get('/getHighestLowestPulse', (req,res,next)=>{
+  if(req.query.device_sn){
+    getFunctions.get_highest_lowest_pulse(function(err, result){
+      if (err){
+        res.send([{
+          status : "error",
+          message : err
+        }])
+      }
+      else
+        res.send(result);
+    }, req.query.device_sn);
+  }
+});
+
 // full device user data including contacts
 router.get('/getDeviceUserFull',(req, res, next)=>{
   if(!req.query.user_id && !req.query.device_id){

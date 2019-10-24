@@ -22,7 +22,7 @@ updates with new data every 3 seconds and resets all data each hour (and starts 
 
 
 // main function that starts the statistics infinite data proccessing
-function start_stat(jsonObj,time_stamp){
+async function start_stat(jsonObj,time_stamp){
     getUserInfoAndCreateStatFile(jsonObj,time_stamp);
     console.log(`statistics started for device ${jsonObj.GSTSerial}`);
     
@@ -143,83 +143,7 @@ function start_stat(jsonObj,time_stamp){
                         }
                     });
 
-                    // find the lowest and highest pulse for device user
-                    // updated the apropriate tables with lowest and highest pulse until this moment
-                    // compare with existing high and low pulse measurements and find the highest and the lowest
-                    // also adds location where the highest and lowest pulses occurred and the exact time when that happend
-                    // var log_time = dateTimeCurrent.toISOString().slice(0, 19).replace('T', ' ');
-
-                    // mysqlPool.query(`SELECT * FROM device_highest_pulse WHERE device_sn=${jsonDataFromFile[0].device_id}`, function(err, result, fields){
-                    //     if(err)
-                    //         throw err;
-                    //     else{
-                    //         // if no record found - create new record
-                    //         if(result.length == 0){
-                    //             mysqlPool.query(`INSERT INTO device_highest_pulse(device_sn, time_log, pulse, latitude, longitude)
-                    //             VALUES(${jsonDataFromFile[0].device_id}, "${log_time}",${parseInt(jsonDataFromFile[0].avg_pulse)}, "${jsonDataFromFile[0].latitude}", "${jsonDataFromFile[0].longitude}");`, function(err, result, fields){
-                    //                 if(err)
-                    //                     throw err;
-                    //                 else{
-                    //                     console.log("new highest pulse detected - table updated");
-                    //                 }
-                    //             });
-                    //         }
-                    //         // if record found - check if pulse is higher
-                    //         else{
-                    //             // if pulse is higher - update the record
-                    //             if(parseInt(jsonDataFromFile[0].avg_pulse) > result[0].pulse){
-                    //                 mysqlPool.query(`UPDATE device_highest_pulse SET
-                    //                 time_log = "${log_time}",
-                    //                 pulse = ${parseInt(jsonDataFromFile[0].avg_pulse)},
-                    //                 latitude = "${jsonDataFromFile[0].latitude}",
-                    //                 longitude = "${jsonDataFromFile[0].longitude}"
-                    //                 WHERE device_sn=${jsonDataFromFile[0].device_id}`, function(err, res, fields){
-                    //                     if(err)
-                    //                         throw err;
-                    //                     else{
-                    //                         console.log("new highest pulse detected - table updated");
-                    //                     }
-                    //                 })
-                    //             }
-                    //         }
-                    //     }
-                    // });
-                    // mysqlPool.query(`SELECT * FROM device_lowest_pulse WHERE device_sn=${jsonDataFromFile[0].device_id}`, function(err, result, fields){
-                    //     if(err)
-                    //         throw err;
-                    //     else{
-                    //         // if no record found - create new record
-                    //         if(result.length == 0){
-                    //             mysqlPool.query(`INSERT INTO device_lowest_pulse(device_sn, time_log, pulse, latitude, longitude)
-                    //             VALUES(${jsonDataFromFile[0].device_id}, "${log_time}",${parseInt(jsonDataFromFile[0].avg_pulse)}, "${jsonDataFromFile[0].latitude}", "${jsonDataFromFile[0].longitude}");`, function(err, result, fields){
-                    //                 if(err)
-                    //                     throw err;
-                    //                 else{
-                    //                     console.log("new lowest pulse detected - table updated");
-                    //                 }
-                    //             });
-                    //         }
-                    //         // if record found - check if pulse is lower
-                    //         else{
-                    //             // if pulse is lower - update the record
-                    //             if(parseInt(jsonDataFromFile[0].avg_pulse) < result[0].pulse){
-                    //                 mysqlPool.query(`UPDATE device_lowest_pulse SET
-                    //                 time_log = "${log_time}",
-                    //                 pulse = ${parseInt(jsonDataFromFile[0].avg_pulse)},
-                    //                 latitude = "${jsonDataFromFile[0].latitude}",
-                    //                 longitude = "${jsonDataFromFile[0].longitude}"
-                    //                 WHERE device_sn=${jsonDataFromFile[0].device_id}`, function(err, res, fields){
-                    //                     if(err)
-                    //                         throw err;
-                    //                     else{
-                    //                         console.log("new lowest pulse detected - table updated");
-                    //                     }
-                    //                 })
-                    //             }
-                    //         }
-                    //     }
-                    // });
-
+                    updateMaxMinPulse(jsonDataFromFile[0]);
 
                     // reset the total_pulse, update_counter, distance befora starting next data collection
                     jsonDataFromFile[0].total_pulse = 0;
@@ -228,7 +152,7 @@ function start_stat(jsonObj,time_stamp){
 
                 }
             // update the statistic file for this device
-            fs.writeFile(`./database/database_files/devices_stats/stats_device_${jsonDataFromFile[0].device_id}.txt`, JSON.stringify(jsonDataFromFile) , function(err, data){
+            fs.writeFileSync(`./database/database_files/devices_stats/stats_device_${jsonDataFromFile[0].device_id}.txt`, JSON.stringify(jsonDataFromFile) , function(err, data){
                 if (err) throw err;
             })
         });
@@ -253,7 +177,7 @@ timers.push(timerObj);
 // utility functions for this statistic data proccessing
 
 // method to fetch device user data and create stats_device_<device_id>.txt file for statistics
-let getUserInfoAndCreateStatFile = (jsonObj,time_stamp)=>{
+async function getUserInfoAndCreateStatFile(jsonObj,time_stamp){
     mysqlPool.query(`SELECT * FROM device_users 
     WHERE device_users.device_sn=${jsonObj.GSTSerial};`, function (error, result, fields) {
         if (error){ 
@@ -289,6 +213,88 @@ let getUserInfoAndCreateStatFile = (jsonObj,time_stamp)=>{
             fs.writeFile(`./database/database_files/devices_stats/stats_device_${jsonObj.GSTSerial}.txt`, JSON.stringify(jsonDataFromFile), function (err) {
                 if (err) throw err;
             });
+        }
+    });
+}
+
+/*  
+find the lowest and highest pulse for device user
+updated the apropriate tables with lowest and highest pulse until this moment
+compare with existing high and low pulse measurements and find the highest and the lowest
+also adds location where the highest and lowest pulses occurred and the exact time when that happend 
+*/
+async function updateMaxMinPulse(jsonObj){
+    var dateTimeCurrent = new Date();
+    var log_time = dateTimeCurrent.toISOString().slice(0, 19).replace('T', ' ');
+
+    mysqlPool.query(`SELECT * FROM device_highest_pulse WHERE device_sn=${jsonObj.device_id}`, function(err, result, fields){
+        if(err)
+            throw err;
+        else{
+            // if no record found - create new record
+            if(result.length == 0){
+                mysqlPool.query(`INSERT INTO device_highest_pulse(device_sn, time_log, pulse, latitude, longitude)
+                VALUES(${jsonObj.device_id}, "${log_time}",${parseInt(jsonObj.avg_pulse)}, "${jsonObj.latitude}", "${jsonObj.longitude}");`, function(err, result, fields){
+                    if(err)
+                        throw err;
+                    else{
+                        console.log("new highest pulse detected - table updated");
+                    }
+                });
+            }
+            // if record found - check if pulse is higher
+            else{
+                // if pulse is higher - update the record
+                if(parseInt(jsonObj.avg_pulse) > result[0].pulse){
+                    mysqlPool.query(`UPDATE device_highest_pulse SET
+                    time_log = "${log_time}",
+                    pulse = ${parseInt(jsonObj.avg_pulse)},
+                    latitude = "${jsonObj.latitude}",
+                    longitude = "${jsonObj.longitude}"
+                    WHERE device_sn=${jsonObj.device_id}`, function(err, res, fields){
+                        if(err)
+                            throw err;
+                        else{
+                            console.log("new highest pulse detected - table updated");
+                        }
+                    })
+                }
+            }
+        }
+    });
+    mysqlPool.query(`SELECT * FROM device_lowest_pulse WHERE device_sn=${jsonObj.device_id}`, function(err, result, fields){
+        if(err)
+            throw err;
+        else{
+            // if no record found - create new record
+            if(result.length == 0){
+                mysqlPool.query(`INSERT INTO device_lowest_pulse(device_sn, time_log, pulse, latitude, longitude)
+                VALUES(${jsonObj.device_id}, "${log_time}",${parseInt(jsonObj.avg_pulse)}, "${jsonObj.latitude}", "${jsonObj.longitude}");`, function(err, result, fields){
+                    if(err)
+                        throw err;
+                    else{
+                        console.log("new lowest pulse detected - table updated");
+                    }
+                });
+            }
+            // if record found - check if pulse is lower
+            else{
+                // if pulse is lower - update the record
+                if(parseInt(jsonObj.avg_pulse) < result[0].pulse){
+                    mysqlPool.query(`UPDATE device_lowest_pulse SET
+                    time_log = "${log_time}",
+                    pulse = ${parseInt(jsonObj.avg_pulse)},
+                    latitude = "${jsonObj.latitude}",
+                    longitude = "${jsonObj.longitude}"
+                    WHERE device_sn=${jsonObj.device_id}`, function(err, res, fields){
+                        if(err)
+                            throw err;
+                        else{
+                            console.log("new lowest pulse detected - table updated");
+                        }
+                    })
+                }
+            }
         }
     });
 }
