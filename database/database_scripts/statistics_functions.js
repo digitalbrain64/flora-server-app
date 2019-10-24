@@ -60,6 +60,13 @@ async function start_stat(jsonObj,time_stamp){
                 // if day has not passed then simply update the data in the file and update the database table
                 else{
 
+                    // difference in milliseconds = currenct date (date and time from where the server is located) - date time from the file (when statistic started)
+                    var diffInMS = dateTimeCurrent.getTime() - dateTimeFromFile.getTime(); //milliseconds
+                    var diffInHours = (diffInMS/(1000*60*60))%24; // difference in hours
+
+                    var durationPerTimeSlice = parseInt(((diffInMS / (1000*60)) % 60)); // minutes since start of measurement
+
+
                     // average pulse = total sum of pulse measurements per minute (approx. every 3 seconds) devided by update counter (number of updates that been recieved from the device per minute)
                     jsonDataFromFile[0].avg_pulse = jsonDataFromFile[0].total_pulse/jsonDataFromFile[0].update_counter; // average bpm per minute
                     // exmaple: device sends an update every 3 seconds, with every update the pulse remains the same = 100 bpm
@@ -67,14 +74,19 @@ async function start_stat(jsonObj,time_stamp){
                     // by the end of every minute .total_pulse will be = 2000 bpm (100bpm every 3 seconds = 20 updates per minute)
                     // average pulse per minute will be 2000 total pulse / 20 number of updates per minute = 100 bpm (average pulse to this minute)
 
+
+
+                    // total average pulse until now - since the start of measurement
+                    // total pulse for the whole time
+                    jsonDataFromFile[0].total_pulse_daily+=jsonDataFromFile[0].total_pulse;
+
+                    // average pulse for the whole time is total pulse for the whole time / the time since start of measurement
+                    jsonDataFromFile[0].avg_pulse_daily = parseInt(jsonDataFromFile[0].total_pulse_daily/durationPerTimeSlice);
+
+
                     // total distance will store the total distance that has been passed by the user until this point
                     // every device update simply adds distance passed to total_distance
                     jsonDataFromFile[0].total_distance += jsonDataFromFile[0].distance; 
-
-
-                    // difference in milliseconds = currenct date (date and time from where the server is located) - date time from the file (when statistic started)
-                    var diffInMS = dateTimeCurrent.getTime() - dateTimeFromFile.getTime(); //milliseconds
-                    var diffInHours = (diffInMS/(1000*60*60))%24; // difference in hours
                     
 
                     // average speed is calculated by taking the total distance and devide it by difference in hours
@@ -128,6 +140,7 @@ async function start_stat(jsonObj,time_stamp){
                     // update the database table with current statistic data
                     mysqlPool.query(`UPDATE device_statistic
                     SET avg_pulse = ${parseInt(jsonDataFromFile[0].avg_pulse)},
+                    avg_pulse_daily = ${parseInt(jsonDataFromFile[0].daily_avg_pulse)},
                     total_distance = ${parseFloat(jsonDataFromFile[0].total_distance).toFixed(3)},
                     user_age = ${userAge},
                     avg_speed = ${parseFloat(jsonDataFromFile[0].avg_speed).toFixed(3)},
@@ -201,8 +214,10 @@ async function getUserInfoAndCreateStatFile(jsonObj,time_stamp){
                 update_counter:1,
                 user_age: userAge,
                 total_pulse: jsonObj.pulse,
+                total_pulse_daily:0,
                 total_distance:0,
                 avg_pulse:0,
+                avg_pulse_daily:0,
                 avg_speed:0, // average speed per hour - considering the distance
                 distance:0, // distance passed per hour
                 approx_calories:0, // calories burned per hour
