@@ -611,7 +611,7 @@ function get_highest_lowest_pulse(callback, device_sn){
             }
             else{
               final_res.lowest_pulse = result[0];
-              callback(err, final_res);
+              callback(err, [final_res]);
             }
           })
         }
