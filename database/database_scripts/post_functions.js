@@ -201,8 +201,9 @@ async function set_device_status(device_sn,deviceStatus){
     steps_count = 0,
     calories_burn = 0,
     total_distance = 0,
+    avg_pulse_daily = 0,
     stats_start_time = "0000-00-00",
-    minutes_since_stats_start = ${0}
+    minutes_since_stats_start = 0
     WHERE device_sn = ${device_sn};`, function(err, result, fields){
       if(err) throw err;
       else{

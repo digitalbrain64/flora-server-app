@@ -50,12 +50,59 @@ async function start_stat(jsonObj,time_stamp){
                 var currentDay = dateTimeCurrent.getDay();
 
                 //console.log(hourFromFile, currentHour);
+                console.log(dateTimeFromFile.getHours(), dateTimeCurrent.getHours());
 
                 // if day has passed - reset the data of the file
                 // statistic data will be reset ONLY in local file, database will still have the latest data and will not be reset
                 // new statistic data will sumply overwrite the old data 
-                if(dayFromFile != currentDay){
-                //
+                if(dateTimeFromFile.getHours() != dateTimeCurrent.getHours()){
+
+                //if(dayFromFile != currentDay){
+
+                    // saving daily statistic report for the previous day
+
+                    // stripping away the date - getting rid of hours, minutes, milliseconds
+                    // leaving only the date in the correct format
+                    var reportDate = dateTimeFromFile;
+                    reportDate.setHours(0);
+                    reportDate.setMinutes(0);
+                    reportDate.setMilliseconds(0);
+
+                    // daving the daily stat for the previous day in the database
+                    mysqlPool.query(`INSERT INTO device_statistic_daily_reports(device_sn, avg_pulse, distance, avg_speed, calories, date)
+                    VALUES(${jsonDataFromFile[0].device_id}, ${jsonDataFromFile[0].avg_pulse_daily}, ${parseFloat(jsonDataFromFile[0].total_distance).toFixed(3)}, ${parseFloat(jsonDataFromFile[0].avg_speed).toFixed(3)} ,${parseFloat(jsonDataFromFile[0].approx_calories).toFixed(2)}, "${reportDate.toISOString().slice(0, 19).replace('T', ' ')}")`, function(err, result, fields){
+                        if(err) throw err;
+                    })
+                    // resseting the stat file before moving to the next day
+                    jsonDataFromFile[0].stat_start_time = dateTimeCurrent;
+                    jsonDataFromFile[0].avg_pulse_daily = 0;
+                    jsonDataFromFile[0].total_distance = 0;
+                    jsonDataFromFile[0].total_pulse = jsonDataFromFile[0].avg_steps;
+                    jsonDataFromFile[0].update_counter = 0;
+                    jsonDataFromFile[0].approx_calories = 0;
+                    jsonDataFromFile[0].avg_speed = 0;
+                    jsonDataFromFile[0].avg_steps = 0;
+                    jsonDataFromFile[0].distance = 0;
+                    jsonDataFromFile[0].avg_pulse = 0;
+
+
+
+                    // update the database table with current statistic data
+                    mysqlPool.query(`UPDATE device_statistic
+                    SET avg_pulse = 0,
+                    avg_pulse_daily = 0,
+                    total_distance = 0,
+                    avg_speed = 0,
+                    steps_count = 0,
+                    calories_burn = 0,
+                    stats_start_time = "${reportDate.toISOString().slice(0, 19).replace('T', ' ')}",
+                    minutes_since_stats_start = 0
+                    WHERE device_sn = ${jsonDataFromFile[0].device_id};`, function(err, result, fields){
+                        if(err) throw err;
+                        else{
+                            console.log(`statistic for device: ${jsonDataFromFile[0].device_id}  -  updated`);
+                        }
+                    });
                 }
                 // if day has not passed then simply update the data in the file and update the database table
                 else{
@@ -67,7 +114,7 @@ async function start_stat(jsonObj,time_stamp){
                     var durationPerTimeSlice = parseInt(((diffInMS / (1000*60)) % 60)); // minutes since start of measurement
 
 
-                    // average pulse = total sum of pulse measurements per minute (approx. every 3 seconds) devided by update counter (number of updates that been recieved from the device per minute)
+                    // average pulse per minute = total sum of pulse measurements per minute (approx. every 3 seconds) devided by update counter (number of updates that been recieved from the device per minute)
                     jsonDataFromFile[0].avg_pulse = jsonDataFromFile[0].total_pulse/jsonDataFromFile[0].update_counter; // average bpm per minute
                     // exmaple: device sends an update every 3 seconds, with every update the pulse remains the same = 100 bpm
                     // each time the device sends data the pulse measurement is stored in .total_pulse
@@ -78,7 +125,7 @@ async function start_stat(jsonObj,time_stamp){
 
                     // total average pulse until now - since the start of measurement
                     // total pulse for the whole time
-                    jsonDataFromFile[0].total_pulse_daily+=jsonDataFromFile[0].total_pulse;
+                    jsonDataFromFile[0].total_pulse_daily+=jsonDataFromFile[0].avg_pulse;
 
                     // average pulse for the whole time is total pulse for the whole time / the time since start of measurement
                     jsonDataFromFile[0].avg_pulse_daily = parseInt(jsonDataFromFile[0].total_pulse_daily/durationPerTimeSlice);
@@ -94,6 +141,11 @@ async function start_stat(jsonObj,time_stamp){
 
                     jsonDataFromFile[0].avg_speed = avgSpeedPerTimeSlice;
 
+
+                    // normal heart rate according to the age of the device user
+                    // this numbers were taken from https://www.health.harvard.edu/heart-health/what-your-heart-rate-is-telling-you arcticle
+                    // numbers represent the normal heart rate levels according to age age group
+
                     // calories burned calculation:
                     // to measure the accurate calories burned we need to use:
                     // 1. age
@@ -106,7 +158,7 @@ async function start_stat(jsonObj,time_stamp){
                     var userGender = jsonDataFromFile[0].user_gender; // 0 - male  ,  1 - female
 
                     // 4. duration of activity (in minutes)
-                    var durationPerTimeSlice = parseInt(((diffInMS / (1000*60)) % 60)); // minutes
+                    //durationPerTimeSlice
 
                     // 5. pulse (heart rate)
                     var avgPulsePerTimeSlice = jsonDataFromFile[0].avg_pulse;
@@ -144,7 +196,7 @@ async function start_stat(jsonObj,time_stamp){
                     avg_pulse_daily = ${parseInt(jsonDataFromFile[0].avg_pulse_daily)},
                     total_distance = ${parseFloat(jsonDataFromFile[0].total_distance).toFixed(3)},
                     user_age = ${userAge},
-                    avg_speed = ${parseFloat(jsonDataFromFile[0].avg_speed).toFixed(3)},
+                    avg_speed = ${parseFloat(jsonDataFromFile[0].avg_speed).toFixed(2)},
                     steps_count = ${parseInt(jsonDataFromFile[0].avg_steps)},
                     calories_burn = ${parseFloat(jsonDataFromFile[0].approx_calories).toFixed(2)},
                     stats_start_time = "${jsonDataFromFile[0].stat_start_time}",
@@ -205,8 +257,6 @@ async function getUserInfoAndCreateStatFile(jsonObj,time_stamp){
             var deviceStatObj = {
                 device_id: jsonObj.GSTSerial, //device serial number
                 stat_start_time: time_stamp, //statistic start time (for catching when hour passed)
-                pulse_at_start: jsonObj.pulse, // user pulse at start of statistic
-                battery_at_start: jsonObj.battery, // battery at start - for measuring how much battery has been consumed by hour
                 user_weight: result[0].weight,
                 user_height: result[0].height,
                 user_gender: result[0].gender,
