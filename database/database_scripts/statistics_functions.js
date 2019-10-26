@@ -55,7 +55,7 @@ async function start_stat(jsonObj,time_stamp){
                 // dateTimeCurrent is the current dateTime object from the location where the server is located
                 // cloud services are often located in different time zones
                 var dateTimeCurrent = new Date();
-                dateTimeCurrent.setHours(dateTimeCurrent.getHours()-3);
+                dateTimeCurrent.setHours(dateTimeCurrent.getHours());
                 var currentDay = dateTimeCurrent.getDay();
 
                 //console.log(hourFromFile, currentHour);
