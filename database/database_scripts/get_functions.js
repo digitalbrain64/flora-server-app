@@ -303,7 +303,16 @@ function get_app_user_account(callback, user_id){
       if(err)
         throw err;
       else{
-        callback(err, result);
+        if(result.length != 0){
+          callback(err, result);
+        }
+        else{
+          callback(err, [{
+            status:"error",
+            message:"user not found"
+          }]);
+        }
+        
       }
     })
 }
@@ -312,25 +321,64 @@ function get_app_user_account(callback, user_id){
 // every app user probably has some devices registered on his user account
 // this function will fetch ONLY the devices that are registered on the specific application user account
 function get_app_user_devices(callback, user_id){
-    mysqlPool.query(`SELECT device_users.*,app_user_devices.date_of_activation
-    FROM app_user_devices
-    LEFT JOIN device_users
-    ON app_user_devices.device_id = device_users.device_sn
-    WHERE app_user_devices.user_id = ${user_id};`, function(err, result, fields){
-      if(err)
-        return callback(err, result);
-      else{
-        if(result.length == 0){
-          callback(err, [{
-            status:"error",
-            message: `no GST devices registered with user id ${user_id}`
-          }])
+  mysqlPool.query(`SELECT * FROM app_users WHERE user_id = ${user_id}`, function(err, res, fields){
+    if(err){
+      callback(err, res);
+    }
+    else{
+      if(res.length != 0){
+        // if user priviliges = 5 user has privileges for this action
+        // combine data from 3 tables: sos_incidents, device_users, devices_cache_data
+        if(res[0].user_priv == 5){
+          mysqlPool.query(`SELECT device_users.*,app_user_devices.date_of_activation
+          FROM app_user_devices
+          LEFT JOIN device_users
+          ON app_user_devices.device_id = device_users.device_sn`, function(err, result, fields){
+            if(err)
+              return callback(err, result);
+            else{
+              if(result.length == 0){
+                callback(err, [{
+                  status:"error",
+                  message: `no GST devices registered with user id ${user_id}`
+                }])
+              }
+              else{
+                callback(err, result);
+              }
+            }
+          })
         }
         else{
-          callback(err, result);
+          mysqlPool.query(`SELECT device_users.*,app_user_devices.date_of_activation
+          FROM app_user_devices
+          LEFT JOIN device_users
+          ON app_user_devices.device_id = device_users.device_sn
+          WHERE app_user_devices.user_id = ${user_id};`, function(err, result, fields){
+            if(err)
+              return callback(err, result);
+            else{
+              if(result.length == 0){
+                callback(err, [{
+                  status:"error",
+                  message: `no GST devices registered with user id ${user_id}`
+                }])
+              }
+              else{
+                callback(err, result);
+              }
+            }
+          })
         }
       }
-    })
+      else{
+        callback(err, [{
+          status:"error",
+          message: `no GST devices registered with user id ${user_id}`
+        }])
+      }
+    }
+  });
 }
   
 
@@ -590,32 +638,41 @@ function get_highest_lowest_pulse(callback, device_sn){
       return callback(err, result);
     }
     else{
-      var userBirthDay = new Date(Date.parse(result[0].birthday));
-      var currDate = new Date();
-      final_res.gender = result[0].gender?"female":"male";
-      final_res.first_name = result[0].first_name;
-      final_res.last_name = result[0].last_name;
-      final_res.weight = result[0].weight;
-      final_res.user_age = currDate.getFullYear() - userBirthDay.getFullYear();
-      // fetch highest pulse
-      mysqlPool.query(`SELECT * FROM device_highest_pulse WHERE device_sn = ${device_sn}`, function(err, result, fields){
-        if(err){
-          return callback(err, result);
-        }
-        else{
-          // add to final result
-          final_res.highest_pulse = result[0];
-          mysqlPool.query(`SELECT * FROM device_lowest_pulse WHERE device_sn = ${device_sn}`, function(err, result, fields){
-            if(err){
-              return callback(err, result);
-            }
-            else{
-              final_res.lowest_pulse = result[0];
-              callback(err, [final_res]);
-            }
-          })
-        }
-      })
+      if(result.length!=0){
+        var userBirthDay = new Date(Date.parse(result[0].birthday));
+        var currDate = new Date();
+        final_res.gender = result[0].gender?"female":"male";
+        final_res.first_name = result[0].first_name;
+        final_res.last_name = result[0].last_name;
+        final_res.weight = result[0].weight;
+        final_res.user_age = currDate.getFullYear() - userBirthDay.getFullYear();
+        // fetch highest pulse
+        mysqlPool.query(`SELECT * FROM device_highest_pulse WHERE device_sn = ${device_sn}`, function(err, result, fields){
+          if(err){
+            return callback(err, result);
+          }
+          else{
+            // add to final result
+            final_res.highest_pulse = result[0];
+            mysqlPool.query(`SELECT * FROM device_lowest_pulse WHERE device_sn = ${device_sn}`, function(err, result, fields){
+              if(err){
+                return callback(err, result);
+              }
+              else{
+                final_res.lowest_pulse = result[0];
+                callback(err, [final_res]);
+              }
+            })
+          }
+        })       
+      }
+      else{
+        callback(err, [{
+          status:"error",
+          message:`device ${device_sn} -- not found`
+        }])
+      }
+
     }
   })
 }

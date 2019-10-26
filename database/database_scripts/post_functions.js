@@ -116,7 +116,7 @@ function post_add_new_dev_user(callback,devUserObj){
         if(resSN.length != 0){
           return callback(errorSN, [{
             status: "error",
-            message : "device with the same serial number/user ID already registered"
+            message : "device with the same serial number/user ID is already registered"
           }]);
         }
         else{
@@ -173,10 +173,6 @@ function post_add_new_dev_user(callback,devUserObj){
         }
       }
     })
-    
-  
-    
-  
 }
 
 

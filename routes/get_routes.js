@@ -111,7 +111,7 @@ router.get('/getAppUserAccount', (req, res, next)=>{
           res.send(result);
         }, req.query.user_id);
       }
-      else if (!req.query.p && !req.query.u && !req.query.user_id){
+      else{
         res.send([{
           status : "error",
           message : "please provide password and username/email"
@@ -213,48 +213,6 @@ router.get('/passChange', (req, res, next)=>{
   }
 })
 
-router.get('/getLowestPulse', (req, res, next)=>{
-  if(!req.query.device_sn){
-    res.send([{
-      status : "error",
-      message : "please provide device id"
-    }])
-  }
-  else{
-    getFunctions.get_lowest_pulse(function(err, result){
-      if(err)
-        res.send([{
-          status : "error",
-          message : err
-        }]);
-      else
-        res.send(result);
-    },req.query.device_sn)
-  }
-  
-})
-
-router.get('/getHighestPulse', (req, res, next)=>{
-  if(!req.query.id){
-    res.send([{
-      status : "error",
-      message : "please provide device id"
-    }])
-  }
-  else{
-    getFunctions.get_highest_pulse(function(err, result){
-      if(err)
-        res.send([{
-          status : "error",
-          message : err
-        }]);
-      else
-        res.send(result);
-    },req.query.id)
-  }
-  
-});
-
 router.get('/getHighestLowestPulse', (req,res,next)=>{
   if(req.query.device_sn){
     getFunctions.get_highest_lowest_pulse(function(err, result){
@@ -267,6 +225,12 @@ router.get('/getHighestLowestPulse', (req,res,next)=>{
       else
         res.send(result);
     }, req.query.device_sn);
+  }
+  else{
+    res.send([{
+      status: "error",
+      message : "please provide device id"
+    }])
   }
 });
 
@@ -332,26 +296,6 @@ router.get('/getDeviceUser', (req, res, next)=>{
       else{
         res.send(result);
       }
-    },req.query.user_id)
-  }
-});
-
-router.get('/getDeviceUserContacts', (req, res, next)=>{
-  if(!req.query.user_id){
-    res.send([{
-      status : "error",
-      message : "please provide user id"
-    }])
-  }
-  else{
-    getFunctions.get_user_contacts((err, result)=>{
-      if(err)
-        res.send([{
-          status:"error",
-          message:err
-        }]);
-      else
-        res.send(result);
     },req.query.user_id)
   }
 });
