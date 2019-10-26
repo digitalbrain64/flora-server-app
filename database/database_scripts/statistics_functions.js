@@ -31,10 +31,19 @@ async function start_stat(jsonObj,time_stamp){
     var timer_id = setInterval(function(){
         // step one: read the data collected inside the ./database/database_files/devices_stats/stats_device_${jsonObj.GSTSerial}.txt
         // other functions added data to this file every time a GST device sent an update with all newest device data
-            fs.readFile(`./database/database_files/devices_stats/stats_device_${jsonObj.GSTSerial}.txt`, function(err, data){
-                if(err) throw err;
+        var jsonDataFromFile;
+                try {
+                    var data = fs.readFileSync(`./database/database_files/devices_stats/stats_device_${jsonObj.GSTSerial}.txt`);
+                    jsonDataFromFile = JSON.parse(data); // parsing the data from the file to JSON
+                    console.log(`statistic file parsed correctly`);
+                    
 
-                var jsonDataFromFile = JSON.parse(data); // parsing the data from the file to JSON
+                } catch (error) {
+                    getUserInfoAndCreateStatFile(jsonObj,time_stamp);
+                    var data = fs.readFileSync(`./database/database_files/devices_stats/stats_device_${jsonObj.GSTSerial}.txt`);
+                    jsonDataFromFile = JSON.parse(data); // parsing the data from the file to JSON
+                    console.log(`server error ${error} - reseting device ${jsonObj.GSTSerial} statistics`);
+                }
                         
                 // statistic will be reset by the end of the day
                 // data dateTimeFromFile stores the dateTime when the statistic started for the current device
@@ -50,14 +59,12 @@ async function start_stat(jsonObj,time_stamp){
                 var currentDay = dateTimeCurrent.getDay();
 
                 //console.log(hourFromFile, currentHour);
-                console.log(dateTimeFromFile.getHours(), dateTimeCurrent.getHours());
-
                 // if day has passed - reset the data of the file
                 // statistic data will be reset ONLY in local file, database will still have the latest data and will not be reset
                 // new statistic data will sumply overwrite the old data 
-                if(dateTimeFromFile.getHours() != dateTimeCurrent.getHours()){
+                //if(dateTimeFromFile.getHours() != dateTimeCurrent.getHours()){
 
-                //if(dayFromFile != currentDay){
+                if(dayFromFile != currentDay){
 
                     // saving daily statistic report for the previous day
 
@@ -106,7 +113,6 @@ async function start_stat(jsonObj,time_stamp){
                 }
                 // if day has not passed then simply update the data in the file and update the database table
                 else{
-
                     // difference in milliseconds = currenct date (date and time from where the server is located) - date time from the file (when statistic started)
                     var diffInMS = dateTimeCurrent.getTime() - dateTimeFromFile.getTime(); //milliseconds
                     var diffInHours = (diffInMS/(1000*60*60))%24; // difference in hours
@@ -114,21 +120,29 @@ async function start_stat(jsonObj,time_stamp){
                     var durationPerTimeSlice = parseInt(((diffInMS / (1000*60)) % 60)); // minutes since start of measurement
 
 
-                    // average pulse per minute = total sum of pulse measurements per minute (approx. every 3 seconds) devided by update counter (number of updates that been recieved from the device per minute)
-                    jsonDataFromFile[0].avg_pulse = jsonDataFromFile[0].total_pulse/jsonDataFromFile[0].update_counter; // average bpm per minute
-                    // exmaple: device sends an update every 3 seconds, with every update the pulse remains the same = 100 bpm
-                    // each time the device sends data the pulse measurement is stored in .total_pulse
-                    // by the end of every minute .total_pulse will be = 2000 bpm (100bpm every 3 seconds = 20 updates per minute)
-                    // average pulse per minute will be 2000 total pulse / 20 number of updates per minute = 100 bpm (average pulse to this minute)
+                    // average pulse per minute = total sum of pulse measurements per minute (approx. every 3 seconds) devided by pulse counter (number of pulse updates per minute)
+                    // if pulse counter for the passed minute is NOT 0:
+                    // calculate the average pulse for the passed minute
+                    // add one minute to pulse minute counter (one minute with successful pulse data recieved)
+                    // add average pulse to total pulse daily
+                    if(jsonDataFromFile[0].pulse_counter != 0){
+                        jsonDataFromFile[0].avg_pulse = jsonDataFromFile[0].total_pulse/jsonDataFromFile[0].pulse_counter;
+                        jsonDataFromFile[0].pulse_minute_counter+=1; // add one minute
+                        jsonDataFromFile[0].total_pulse_daily+=jsonDataFromFile[0].avg_pulse;
+                    }
+                    // if pulse counter for the passed minute is 0 (all pulse measurements for the past minute were 0)
+                    // add 0 to total pulse daily
+                    // average pulse for the passed minute is 0
+                    else{
+                        jsonDataFromFile[0].total_pulse_daily+=0;
+                        jsonDataFromFile[0].avg_pulse = 0;
+                    }
 
-
-
-                    // total average pulse until now - since the start of measurement
-                    // total pulse for the whole time
-                    jsonDataFromFile[0].total_pulse_daily+=jsonDataFromFile[0].avg_pulse;
-
-                    // average pulse for the whole time is total pulse for the whole time / the time since start of measurement
-                    jsonDataFromFile[0].avg_pulse_daily = parseInt(jsonDataFromFile[0].total_pulse_daily/durationPerTimeSlice);
+                    // average pulse for the whole time is total pulse for the whole time / daily pulse counter (minutes with succesful pulse data)
+                    if(jsonDataFromFile[0].pulse_counter!=0){
+                        jsonDataFromFile[0].avg_pulse_daily = parseInt(jsonDataFromFile[0].total_pulse_daily/jsonDataFromFile[0].pulse_minute_counter);
+                    }
+                    
 
 
                     // total distance will store the total distance that has been passed by the user until this point
@@ -209,20 +223,37 @@ async function start_stat(jsonObj,time_stamp){
                         }
                     });
 
-                    updateMaxMinPulse(jsonDataFromFile[0]);
+                    if(jsonDataFromFile[0].avg_pulse != 0){
+                        updateMaxMinPulse(jsonDataFromFile[0]);
+                    }
+                    
+
+                    // statistic report teminal logs
+                    console.log(`\n\n################\n`);
+                    console.log(`device [${jsonDataFromFile[0].device_id}] statistic report for passed minute:\n`);
+                    console.log(`@ Pulse:\n`);
+                    console.log(`success pulse countings for past 1 minute: ${jsonDataFromFile[0].pulse_counter} times`);
+                    console.log(`total minutes with successful pulse countings: ${jsonDataFromFile[0].pulse_minute_counter} minutes`);
+                    console.log(`average pulse for past 1 minute: ${jsonDataFromFile[0].avg_pulse} bpm`);
+                    console.log(`average pulse for the whole day: ${jsonDataFromFile[0].avg_pulse_daily} bpm\n\n`);
+                    console.log(`@ Distance:\n`);
+                    console.log(`distance passed for the past minute: ${parseFloat(jsonDataFromFile[0].distance).toFixed(2)} km`);
+                    console.log(`average speed for the passed minute: ${parseFloat(jsonDataFromFile[0].distance/0.0166667).toFixed(2)} km/h`);
+                    console.log(`total distance passed for whole day: ${parseFloat(jsonDataFromFile[0].total_distance).toFixed(2)} km`);
+                    console.log(`total speed for the whole day: ${parseFloat(jsonDataFromFile[0].avg_speed).toFixed(2)} km\h`);
+                    console.log(`total steps for the whole day: ${parseInt(jsonDataFromFile[0].avg_steps)} steps\n\n`);
+                    console.log(`@ Calories:\n`);
+                    console.log(`total steps for the whole day: ${parseFloat(jsonDataFromFile[0].approx_calories).toFixed(2)} kCal\n`);
+                    console.log(`\n################\n\n`);
 
                     // reset the total_pulse, update_counter, distance befora starting next data collection
                     jsonDataFromFile[0].total_pulse = 0;
                     jsonDataFromFile[0].update_counter = 0;
                     jsonDataFromFile[0].distance = 0;
-
+                    jsonDataFromFile[0].pulse_counter = 0;
                 }
             // update the statistic file for this device
-            fs.writeFileSync(`./database/database_files/devices_stats/stats_device_${jsonDataFromFile[0].device_id}.txt`, JSON.stringify(jsonDataFromFile) , function(err, data){
-                if (err) throw err;
-            })
-        });
-
+            fs.writeFileSync(`./database/database_files/devices_stats/stats_device_${jsonDataFromFile[0].device_id}.txt`, JSON.stringify(jsonDataFromFile));
 },60000);
 
 // add new item to timers[] 
@@ -243,7 +274,7 @@ timers.push(timerObj);
 // utility functions for this statistic data proccessing
 
 // method to fetch device user data and create stats_device_<device_id>.txt file for statistics
-async function getUserInfoAndCreateStatFile(jsonObj,time_stamp){
+function getUserInfoAndCreateStatFile(jsonObj,time_stamp){
     mysqlPool.query(`SELECT * FROM device_users 
     WHERE device_users.device_sn=${jsonObj.GSTSerial};`, function (error, result, fields) {
         if (error){ 
@@ -264,15 +295,23 @@ async function getUserInfoAndCreateStatFile(jsonObj,time_stamp){
                 longitude:0,
                 update_counter:1,
                 user_age: userAge,
+                total_distance:0,
                 total_pulse: jsonObj.pulse,
                 total_pulse_daily:0,
-                total_distance:0,
                 avg_pulse:0,
                 avg_pulse_daily:0,
+                pulse_minute_counter:0,
                 avg_speed:0, // average speed per hour - considering the distance
                 distance:0, // distance passed per hour
                 approx_calories:0, // calories burned per hour
                 avg_steps:0 // steps per hour
+            }
+
+            if(jsonObj.pulse != 0){
+                deviceStatObj.pulse_counter = 1;
+            }
+            else{
+                deviceStatObj.pulse_counter = 0;
             }
             var jsonDataFromFile = [];
             jsonDataFromFile.push(deviceStatObj);
