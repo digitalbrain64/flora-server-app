@@ -11,9 +11,8 @@ var timers = [];
 /* Statistics include:
 1. calories counter - how much calories the device user burned in the past hour/day
    basis on avg speed, pulse, distance.
-2. percentage of health risk - basis on weather information from the erea where user is currently at
-   and avg pulse measurments in the past hour/day.
-3. distance that the user walked in the past hour/day.
+
+3. distance that the user walked in the past hour/day
 
 all statistics data is stored in: database -> tables -> stats_per_hour
 updates with new data every 3 seconds and resets all data each hour (and starts over)
@@ -24,7 +23,9 @@ updates with new data every 3 seconds and resets all data each hour (and starts 
 // main function that starts the statistics infinite data proccessing
 async function start_stat(jsonObj,time_stamp){
     getUserInfoAndCreateStatFile(jsonObj,time_stamp);
-    console.log(`statistics started for device ${jsonObj.GSTSerial}`);
+
+    /* ################ for local test - uncomment this part ################ */
+    //console.log(`statistics started for device ${jsonObj.GSTSerial}`);
     
 
     // set interval triggers a function every 1 minute (60000 ms)
@@ -35,15 +36,19 @@ async function start_stat(jsonObj,time_stamp){
                 try {
                     var data = fs.readFileSync(`./database/database_files/devices_stats/stats_device_${jsonObj.GSTSerial}.txt`);
                     jsonDataFromFile = JSON.parse(data); // parsing the data from the file to JSON
-                    console.log(`statistic file parsed correctly`);
+
+                    /* ################ for local test - uncomment this part ################ */
+                    //console.log(`statistic file parsed correctly`);
                     
 
                 } catch (error) {
                     getUserInfoAndCreateStatFile(jsonObj,time_stamp);
                     var data = fs.readFileSync(`./database/database_files/devices_stats/stats_device_${jsonObj.GSTSerial}.txt`);
                     jsonDataFromFile = JSON.parse(data); // parsing the data from the file to JSON
-                    console.log(`server error ${error} - reseting device ${jsonObj.GSTSerial} statistics`);
+                    /* ################ for local test - uncomment this part ################ */
+                    // console.log(`server error ${error} - reseting device ${jsonObj.GSTSerial} statistics`);
                 }
+
                         
                 // statistic will be reset by the end of the day
                 // data dateTimeFromFile stores the dateTime when the statistic started for the current device
@@ -52,10 +57,16 @@ async function start_stat(jsonObj,time_stamp){
                 // day from file is the day in the week when the statistic started
                 var dayFromFile = dateTimeFromFile.getDay();
 
+
+
                 // dateTimeCurrent is the current dateTime object from the location where the server is located
                 // cloud services are often located in different time zones
                 var dateTimeCurrent = new Date();
-                dateTimeCurrent.setHours(dateTimeCurrent.getHours());
+                /* ################ for local test - uncomment this part ################ */
+                // dateTimeCurrent.setHours(dateTimeCurrent.getHours()-3);
+
+
+
                 var currentDay = dateTimeCurrent.getDay();
 
                 //console.log(hourFromFile, currentHour);
@@ -107,7 +118,8 @@ async function start_stat(jsonObj,time_stamp){
                     WHERE device_sn = ${jsonDataFromFile[0].device_id};`, function(err, result, fields){
                         if(err) throw err;
                         else{
-                            console.log(`statistic for device: ${jsonDataFromFile[0].device_id}  -  updated`);
+                            /* ################ for local test - uncomment this part ################ */
+                            // console.log(`statistic for device: ${jsonDataFromFile[0].device_id}  -  updated`);
                         }
                     });
                 }
@@ -218,7 +230,9 @@ async function start_stat(jsonObj,time_stamp){
                     WHERE device_sn = ${jsonDataFromFile[0].device_id};`, function(err, result, fields){
                         if(err) throw err;
                         else{
-                            console.log(`statistic for device: ${jsonDataFromFile[0].device_id}  -  updated`);
+
+                            /* ################ for local test - uncomment this part ################ */
+                            // console.log(`statistic for device: ${jsonDataFromFile[0].device_id}  -  updated`);
                             
                         }
                     });
@@ -228,23 +242,24 @@ async function start_stat(jsonObj,time_stamp){
                     }
                     
 
-                    // statistic report teminal logs
-                    console.log(`\n\n################\n`);
-                    console.log(`device [${jsonDataFromFile[0].device_id}] statistic report for passed minute:\n`);
-                    console.log(`@ Pulse:\n`);
-                    console.log(`success pulse countings for past 1 minute: ${jsonDataFromFile[0].pulse_counter} times`);
-                    console.log(`total minutes with successful pulse countings: ${jsonDataFromFile[0].pulse_minute_counter} minutes`);
-                    console.log(`average pulse for past 1 minute: ${jsonDataFromFile[0].avg_pulse} bpm`);
-                    console.log(`average pulse for the whole day: ${jsonDataFromFile[0].avg_pulse_daily} bpm\n\n`);
-                    console.log(`@ Distance:\n`);
-                    console.log(`distance passed for the past minute: ${parseFloat(jsonDataFromFile[0].distance).toFixed(2)} km`);
-                    console.log(`average speed for the passed minute: ${parseFloat(jsonDataFromFile[0].distance/0.0166667).toFixed(2)} km/h`);
-                    console.log(`total distance passed for whole day: ${parseFloat(jsonDataFromFile[0].total_distance).toFixed(2)} km`);
-                    console.log(`total speed for the whole day: ${parseFloat(jsonDataFromFile[0].avg_speed).toFixed(2)} km\h`);
-                    console.log(`total steps for the whole day: ${parseInt(jsonDataFromFile[0].avg_steps)} steps\n\n`);
-                    console.log(`@ Calories:\n`);
-                    console.log(`total steps for the whole day: ${parseFloat(jsonDataFromFile[0].approx_calories).toFixed(2)} kCal\n`);
-                    console.log(`\n################\n\n`);
+                    /* ########################  for local test uncomment this  ########################## */
+
+                    // console.log(`\n\n################\n`);
+                    // console.log(`device [${jsonDataFromFile[0].device_id}] statistic report for passed minute:\n`);
+                    // console.log(`@ Pulse:\n`);
+                    // console.log(`success pulse countings for past 1 minute: ${jsonDataFromFile[0].pulse_counter} times`);
+                    // console.log(`total minutes with successful pulse countings: ${jsonDataFromFile[0].pulse_minute_counter} minutes`);
+                    // console.log(`average pulse for past 1 minute: ${jsonDataFromFile[0].avg_pulse} bpm`);
+                    // console.log(`average pulse for the whole day: ${jsonDataFromFile[0].avg_pulse_daily} bpm\n\n`);
+                    // console.log(`@ Distance:\n`);
+                    // console.log(`distance passed for the past minute: ${parseFloat(jsonDataFromFile[0].distance).toFixed(2)} km`);
+                    // console.log(`average speed for the passed minute: ${parseFloat(jsonDataFromFile[0].distance/0.0166667).toFixed(2)} km/h`);
+                    // console.log(`total distance passed for whole day: ${parseFloat(jsonDataFromFile[0].total_distance).toFixed(2)} km`);
+                    // console.log(`total speed for the whole day: ${parseFloat(jsonDataFromFile[0].avg_speed).toFixed(2)} km\h`);
+                    // console.log(`total steps for the whole day: ${parseInt(jsonDataFromFile[0].avg_steps)} steps\n\n`);
+                    // console.log(`@ Calories:\n`);
+                    // console.log(`total steps for the whole day: ${parseFloat(jsonDataFromFile[0].approx_calories).toFixed(2)} kCal\n`);
+                    // console.log(`\n################\n\n`);
 
                     // reset the total_pulse, update_counter, distance befora starting next data collection
                     jsonDataFromFile[0].total_pulse = 0;
@@ -343,7 +358,8 @@ async function updateMaxMinPulse(jsonObj){
                     if(err)
                         throw err;
                     else{
-                        console.log("new highest pulse detected - table updated");
+                        /* ################ for local test - uncomment this part ################ */
+                        // console.log("new highest pulse detected - table updated");
                     }
                 });
             }
@@ -360,7 +376,8 @@ async function updateMaxMinPulse(jsonObj){
                         if(err)
                             throw err;
                         else{
-                            console.log("new highest pulse detected - table updated");
+                            /* ################ for local test - uncomment this part ################ */
+                            //console.log("new highest pulse detected - table updated");
                         }
                     })
                 }
@@ -378,7 +395,8 @@ async function updateMaxMinPulse(jsonObj){
                     if(err)
                         throw err;
                     else{
-                        console.log("new lowest pulse detected - table updated");
+                        /* ################ for local test - uncomment this part ################ */
+                        //console.log("new lowest pulse detected - table updated");
                     }
                 });
             }
@@ -395,7 +413,8 @@ async function updateMaxMinPulse(jsonObj){
                         if(err)
                             throw err;
                         else{
-                            console.log("new lowest pulse detected - table updated");
+                            /* ################ for local test - uncomment this part ################ */
+                            //console.log("new lowest pulse detected - table updated");
                         }
                     })
                 }
@@ -412,7 +431,8 @@ let clearTimerInterval = (device_id)=>{
       if(timers[i].itemId == device_id){
         clearInterval(timers[i].timerId); // stop setInterval by its ID
         timers.splice(i, 1); // remove the object from array
-        console.log("set interval cleared");
+        /* ################ for local test - uncomment this part ################ */
+        // console.log("set interval cleared");
         break;
       }
     }

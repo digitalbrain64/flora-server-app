@@ -36,7 +36,8 @@ async function update_device_cache_data(jsonObj){
             VALUES(${jsonObj.GSTSerial}, "${jsonObj.latitude}", "${jsonObj.longitude}", ${jsonObj.pulse}, "${log_time}", "open");`, function(err, result, fields){
               if(err) throw err;
               else{
-                console.log(`device : ${jsonObj.GSTSerial} - emergancy!!`);
+                /* ################ for local test - uncomment this part ################ */
+                // console.log(`device : ${jsonObj.GSTSerial} - emergancy!!`);
               }
             })
           }
@@ -205,7 +206,8 @@ async function set_device_status(device_sn,deviceStatus){
     WHERE device_sn = ${device_sn};`, function(err, result, fields){
       if(err) throw err;
       else{
-        console.log(`statistic for device: ${device_sn}  -  cleared`);
+        /* ################ for local test - uncomment this part ################ */
+        //console.log(`statistic for device: ${device_sn}  -  cleared`);
       }
     });
     
@@ -237,7 +239,9 @@ function post_sos_report(reportObj){
         mysqlPool.query(sql, function (err, result) {
           if (err) 
              throw err;
-          console.log(`device id: ${reportObj.GSTSerial} - sos report inserted`);
+             /* ################ for local test - uncomment this part ################ */
+          
+             //console.log(`device id: ${reportObj.GSTSerial} - sos report inserted`);
         });
     });
 }
@@ -293,7 +297,8 @@ function update_devices_status_file(jsonObj,currentUpdateTime){
               if (err) 
               throw err;
               // output to terminal for debugging purposes
-              console.log(`device id: ${jsonObj.GSTSerial} - location history record inserted`);
+              /* ################ for local test - uncomment this part ################ */
+              //console.log(`device id: ${jsonObj.GSTSerial} - location history record inserted`);
             });
 
             // update historyCounter for current device to 0
@@ -364,10 +369,7 @@ async function calcAvgSpeedAndUpdateCacheTable(jsonObj, time_stamp){
     
           // average speed between two locations
           avgSpeedKmh = distance/timeDiffInHours;
-                    
-          // print in terminal for debugging purposes
-          console.log('###### ---- distance: '+parseFloat(distance).toFixed(3)+'km,  total distance: '+parseFloat(newDistance).toFixed(3)+'km,   speed: '+avgSpeedKmh.toFixed(3)+'km/h,  time: '+timeDiffInMilliseconds+'milliseconds   --- #####');
-          
+                              
           // statistic data - this function also adds pulse and distance to the correct file in the database_files/devices_stats/stats_device_<deviceId>.txt
           // this is needed for later statistic measurments
           var data = fs.readFileSync(`./database/database_files/devices_stats/stats_device_${jsonObj.GSTSerial}.txt`);
@@ -381,14 +383,18 @@ async function calcAvgSpeedAndUpdateCacheTable(jsonObj, time_stamp){
             }
     
             try {
-              if(result[0].pulse != 0){
+              if(result[0].pulse > 0){
                 deviceObj[0].pulse_counter+=1;
+                deviceObj[0].total_pulse +=result[0].pulse;
               }
               deviceObj[0].update_counter +=1;
               deviceObj[0].distance +=distance;
-              deviceObj[0].total_pulse +=result[0].pulse;
               deviceObj[0].latitude = curr_lat;
               deviceObj[0].longitude = curr_lon;
+              
+              /* ################ for local test - uncomment this part ################ */
+              //console.log('@ [device: '+jsonObj.GSTSerial+'] ---- successful pulse measurements: '+deviceObj[0].pulse_counter+',   current pulse: '+result[0].pulse+'bpm,  total distance until now: '+parseFloat(deviceObj[0].distance).toFixed(3)+'km,   avg speed: '+avgSpeedKmh.toFixed(2)+'km/h,  time: '+timeDiffInMilliseconds+'milliseconds\n');
+
               fs.writeFileSync(`./database/database_files/devices_stats/stats_device_${deviceObj[0].device_id}.txt`, JSON.stringify(deviceObj));
               
             } catch (error) {
