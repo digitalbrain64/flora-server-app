@@ -24,7 +24,6 @@ async function update_device_cache_data(jsonObj){
     // if emergancy button has been pressed
     // create new record in sos_incidents table
     if(jsonObj.sos_status == 1){
-      await update_devices_status_file(jsonObj,currentUpdateTime, 1);
       // check incident status: if there is already an incident from this device with status "open" of "handle" - dont add new incident
       // if there are incidents from this device with status "closed" or no incidents at all from this device - add new incident
       mysqlPool.query(`SELECT * FROM sos_incidents WHERE device_sn = ${jsonObj.GSTSerial} AND status="open" OR status="handle"`,function(err, result, fields){
@@ -43,8 +42,6 @@ async function update_device_cache_data(jsonObj){
           }
         }
       })
-    }else{
-      await update_devices_status_file(jsonObj,currentUpdateTime, 0);
     }
   
     calcAvgSpeedAndUpdateCacheTable(jsonObj, log_time);  
@@ -54,7 +51,7 @@ async function update_device_cache_data(jsonObj){
     // this way we can check if the device was disconnected or not
     // by comparing the update time in the file with the current time and 
     // if the difference is longer then 6 second - device has gone offline
-  
+    await update_devices_status_file(jsonObj,currentUpdateTime);
   
   // async setTimeOut will chack each 8 seconds if devices gone offline
   // by comparing the updateTimeDevice.txt json objects with current time
@@ -223,17 +220,6 @@ async function set_device_status(device_sn,deviceStatus){
     });
 }
 
-async function reset_sos_button(device_sn){
-  // update the appropriate database table that the device has been disconnected
-  var sql = `UPDATE devices_cache_data SET 
-  sos_status = 0
-  WHERE device_sn = ${device_sn}`;
-  mysqlPool.query(sql, function (err, result) {
-      if (err) 
-         throw err;
-  });
-}
-
 
 function post_sos_report(reportObj){
     var report_date = new Date();
@@ -261,7 +247,7 @@ function post_sos_report(reportObj){
     // this way we can check if the device was disconnected or not
     // by comparing the update time in the file with the current time and 
     // if the difference is longer then 6 second - device has gone offline
-function update_devices_status_file(jsonObj,currentUpdateTime, sos_status){
+function update_devices_status_file(jsonObj,currentUpdateTime){
   var data = fs.readFileSync('./database/database_files/util_files/updateTimeDevices.txt', 'utf8');
 
     var updateDeviceJsonArr;
@@ -271,11 +257,7 @@ function update_devices_status_file(jsonObj,currentUpdateTime, sos_status){
       var updateJsonTime = {
         deviceId:jsonObj.GSTSerial, // deviceId to identify the device
         lastUpdateTime:currentUpdateTime, // current time for comparing update times
-        historyCounter:0,
-        sos_counter:0// history counter to know when to add new record to deviceLocatioHistory MySql table
-      }
-      if(sos_status == 1){
-        updateJsonTime.sos_counter+=1;
+        historyCounter:0// history counter to know when to add new record to deviceLocatioHistory MySql table
       }
       updateDeviceJsonArr.push(updateJsonTime);
 
@@ -293,7 +275,6 @@ function update_devices_status_file(jsonObj,currentUpdateTime, sos_status){
           // update the lastUpdateTime value
           updateDeviceJsonArr[i].lastUpdateTime = currentUpdateTime;
           updateDeviceJsonArr[i].historyCounter +=1
-          updateDeviceJsonArr[i].sos_counter+=1;
 
           /* insert record to device location history table */
           // new record is inserted every 5 (or more) minutes
@@ -318,10 +299,6 @@ function update_devices_status_file(jsonObj,currentUpdateTime, sos_status){
             // update historyCounter for current device to 0
             updateDeviceJsonArr[i].historyCounter = 0;
         }
-        if(updateDeviceJsonArr[i].sos_counter == 4){
-          reset_sos_button(updateDeviceJsonArr[i].deviceId);
-          updateDeviceJsonArr[i].sos_counter = 0;
-        }
 
         break; // break - no need to loop any further
       }
@@ -333,10 +310,6 @@ function update_devices_status_file(jsonObj,currentUpdateTime, sos_status){
         deviceId:jsonObj.GSTSerial,
         lastUpdateTime:currentUpdateTime,
         historyCounter:0,
-        sos_counter:0
-      }
-      if(sos_status == 1){
-        updateJsonTime.sos_counter+=1;
       }
       // push it to Json Array - using .push() as with any array in JS
       updateDeviceJsonArr.push(updateJsonTime);
