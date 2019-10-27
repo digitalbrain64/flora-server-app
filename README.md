@@ -33,5 +33,5 @@ The server stores these "SOS" calls inside an "Incidents" table.
 Apart from tracking and monitoring the GST devices the server also acts as REST API and serves the needed data to the applications of the GST service.
 There are various GET's and POST's that the server can handle correcly and fetch the needed data.
 
-Server can handle (tested 100%) from 9-12 GST devices at the same time as well as serving the neede data to the various applications.
+Server can handle (tested 100%) from 9-12 GST devices at the same time as well as serving (API requests) data to the various applications of the GST service.
 
