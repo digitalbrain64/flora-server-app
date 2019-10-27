@@ -88,7 +88,7 @@ async function update_device_cache_data(jsonObj){
         }
       }
     });
-  },15000); // 15 sec
+  },60000); // 1 min
 }
 
 
