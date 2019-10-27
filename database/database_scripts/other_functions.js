@@ -11,7 +11,13 @@ var mysqlPool = mysql.createPool("mysql://bbf377481226a0:eaef03fd@us-cdbr-iron-e
 
 
 
+
+/* app user password change process */
+
 // step 1
+// application must provide credentials (email/username, password)
+// if user exists in the database - serves sends an SMS message to the phone number that is registered with the application user with restore code (4 digit code)
+// api returns a "success" message and sends the email of the application user for later use
 function send_pass_restore_code(callback,credentials){
     var sql = "";
       // search by email
@@ -78,6 +84,7 @@ function send_pass_restore_code(callback,credentials){
   }
   
   // step 2
+  // application must provide the restore code from the SMS and the email address that has been sent in previous step
 function check_restore_code(callback,email,res_code){
     mysqlPool.query(`SELECT * FROM app_users WHERE user_email = '${email}' AND restore_code = '${res_code}'`, (err, result, fields)=>{
       if(err)
@@ -101,6 +108,7 @@ function check_restore_code(callback,email,res_code){
 }
   
   // step 3
+  // new password and email from step 1 is needed to change the password of the app user
 function change_user_pass(callback,email,new_pass){
     mysqlPool.query(`UPDATE app_users SET 
     user_pass = '${new_pass}',

@@ -17,8 +17,8 @@ var mysqlPool = mysql.createPool("mysql://bbf377481226a0:eaef03fd@us-cdbr-iron-e
 // function also passes the data from the GST device and a timestamp (current date and time) to a function that
 // handles it and adds the data to devices_cache_data table
 async function update_device_cache_data(jsonObj){
-    var date = new Date();
-    var log_time = date.toISOString().slice(0, 19).replace('T', ' ');
+    var date = new Date(); // current datetime
+    var log_time = date.toISOString().slice(0, 19).replace('T', ' '); // string that is excepted by mysql DATETIME format
     var currentUpdateTime = log_time;
 
     // if emergancy button has been pressed
@@ -37,7 +37,7 @@ async function update_device_cache_data(jsonObj){
               if(err) throw err;
               else{
                 /* ################ for local test - uncomment this part ################ */
-                // console.log(`device : ${jsonObj.GSTSerial} - emergancy!!`);
+                console.log(`device : ${jsonObj.GSTSerial} - emergancy!!`);
               }
             })
           }
@@ -45,21 +45,23 @@ async function update_device_cache_data(jsonObj){
       })
     }
   
+    // pass the update object and the time stamp to the function
     calcAvgSpeedAndUpdateCacheTable(jsonObj, log_time);  
   
-    /* updating the last update time of the device inside /updateTimeDevices */
-    // the goal is to store last update time about all connected devices
+
+    /* updating the last update time of the device inside ./util_files/devices_update_status.txt */
+    // the goal is to store last update time for all connected devices
     // this way we can check if the device was disconnected or not
     // by comparing the update time in the file with the current time and 
-    // if the difference is longer then 6 second - device has gone offline
+    // if the difference is longer then 8 second - device is concidered as 'offline'
     await update_devices_status_file(jsonObj,currentUpdateTime);
   
-  // async setTimeOut will chack each 8 seconds if devices gone offline
-  // by comparing the updateTimeDevice.txt json objects with current time
+
+
   setTimeout(function(){
-    // get the object with the same deviceId from updateTimeDevices.txt file
+    // get the object with the same deviceId from ./util_files/devices_update_status.txt file
     // read from 'updateTime' file - get all content of the file
-    fs.readFile('./database/database_files/util_files/updateTimeDevices.txt', 'utf8', function(err, data) {
+    fs.readFile('./database/database_files/util_files/devices_update_status.txt', 'utf8', function(err, data) {
       if (err) throw err;
       
       // parsing the data to JSON array - we know it's not empty because of previous actions
@@ -78,7 +80,6 @@ async function update_device_cache_data(jsonObj){
             // write to file - write the updated Json Array - overwrite the existing data of the txt file
             fs.writeFile('./database/database_files/util_files/updateTimeDevices.txt', JSON.stringify(dataJsonArr), function (err) {
               if (err) throw err;
-              console.log('Saved!');
             });
   
             set_device_status(jsonObj.GSTSerial, 0);
@@ -88,7 +89,7 @@ async function update_device_cache_data(jsonObj){
         }
       }
     });
-  },60000); // 1 min
+  },8000); // 8 sec
 }
 
 
@@ -203,7 +204,7 @@ async function set_device_status(device_sn,deviceStatus){
       if(err) throw err;
       else{
         /* ################ for local test - uncomment this part ################ */
-        //console.log(`statistic for device: ${device_sn}  -  cleared`);
+        console.log(`statistic for device: ${device_sn}  -  cleared`);
       }
     });
     
@@ -248,12 +249,13 @@ function post_sos_report(reportObj){
     // by comparing the update time in the file with the current time and 
     // if the difference is longer then 6 second - device has gone offline
 function update_devices_status_file(jsonObj,currentUpdateTime){
-  var data = fs.readFileSync('./database/database_files/util_files/updateTimeDevices.txt', 'utf8');
+  var data = fs.readFileSync('./database/database_files/util_files/devices_update_status.txt', 'utf8');
 
     var updateDeviceJsonArr;
 
     if(data == ""){
       updateDeviceJsonArr = [];
+
       var updateJsonTime = {
         deviceId:jsonObj.GSTSerial, // deviceId to identify the device
         lastUpdateTime:currentUpdateTime, // current time for comparing update times
@@ -262,7 +264,7 @@ function update_devices_status_file(jsonObj,currentUpdateTime){
       updateDeviceJsonArr.push(updateJsonTime);
 
       // write to file - parse the object to JSON object
-      fs.writeFileSync('./database/database_files/util_files/updateTimeDevices.txt', JSON.stringify(updateDeviceJsonArr));
+      fs.writeFileSync('./database/database_files/util_files/devices_update_status.txt', JSON.stringify(updateDeviceJsonArr));
     }
     else{
       // parse to JsonArr and store in variable
@@ -294,7 +296,7 @@ function update_devices_status_file(jsonObj,currentUpdateTime){
               throw err;
               // output to terminal for debugging purposes
               /* ################ for local test - uncomment this part ################ */
-              //console.log(`device id: ${jsonObj.GSTSerial} - location history record inserted`);
+              console.log(`device id: ${jsonObj.GSTSerial} - location history record inserted`);
             });
 
             // update historyCounter for current device to 0
@@ -317,10 +319,8 @@ function update_devices_status_file(jsonObj,currentUpdateTime){
     }
 
     // write to file - write the updated Json Array - overwrite the existing data of the txt file
-    fs.writeFileSync('./database/database_files/util_files/updateTimeDevices.txt', JSON.stringify(updateDeviceJsonArr));
+    fs.writeFileSync('./database/database_files/util_files/devices_update_status.txt', JSON.stringify(updateDeviceJsonArr));
   }
-
-
 }
 
 
@@ -336,11 +336,10 @@ async function calcAvgSpeedAndUpdateCacheTable(jsonObj, time_stamp){
 
         var distance = 0;
         var avgSpeedKmh = 0;
-        var newDistance = 0;
-        var update_counter = 0;
   
         // check if device was online the last time
         // if device was offline before - dont measure distance from the last location of the device
+
         // if device was online before - measure the distance from previus location to current location
         // also measure speed at which the device user passed the distance
         if(result[0].device_status){
@@ -366,8 +365,7 @@ async function calcAvgSpeedAndUpdateCacheTable(jsonObj, time_stamp){
           // average speed between two locations
           avgSpeedKmh = distance/timeDiffInHours;
                               
-          // statistic data - this function also adds pulse and distance to the correct file in the database_files/devices_stats/stats_device_<deviceId>.txt
-          // this is needed for later statistic measurments
+          // add data for statistic measurements to the stat_device_{deviceId}.txt
           var data = fs.readFileSync(`./database/database_files/devices_stats/stats_device_${jsonObj.GSTSerial}.txt`);
     
             var deviceObj;
@@ -379,6 +377,8 @@ async function calcAvgSpeedAndUpdateCacheTable(jsonObj, time_stamp){
             }
     
             try {
+              // when pulse sensor on the device is not user - it sends 0
+              // when we get pulst 0 or negative number - don't count this as a valid pulse measurement
               if(result[0].pulse > 0){
                 deviceObj[0].pulse_counter+=1;
                 deviceObj[0].total_pulse +=result[0].pulse;
@@ -389,7 +389,7 @@ async function calcAvgSpeedAndUpdateCacheTable(jsonObj, time_stamp){
               deviceObj[0].longitude = curr_lon;
               
               /* ################ for local test - uncomment this part ################ */
-              //console.log('@ [device: '+jsonObj.GSTSerial+'] ---- successful pulse measurements: '+deviceObj[0].pulse_counter+',   current pulse: '+result[0].pulse+'bpm,  total distance until now: '+parseFloat(deviceObj[0].distance).toFixed(3)+'km,   avg speed: '+avgSpeedKmh.toFixed(2)+'km/h,  time: '+timeDiffInMilliseconds+'milliseconds\n');
+              console.log('@ [device: '+jsonObj.GSTSerial+'] ---- successful pulse measurements: '+deviceObj[0].pulse_counter+',   current pulse: '+result[0].pulse+'bpm,  total distance until now: '+parseFloat(deviceObj[0].distance).toFixed(3)+'km,   avg speed: '+avgSpeedKmh.toFixed(2)+'km/h,  time: '+timeDiffInMilliseconds+'milliseconds\n');
 
               fs.writeFileSync(`./database/database_files/devices_stats/stats_device_${deviceObj[0].device_id}.txt`, JSON.stringify(deviceObj));
               
@@ -399,7 +399,8 @@ async function calcAvgSpeedAndUpdateCacheTable(jsonObj, time_stamp){
         }
         // if device was offline before - start the start_stat function and pass the data object and time stamp to the function
         else{
-          stat_functions.start_stat(jsonObj,time_stamp); // function will create a statistic file in database_files/devices_stats and will start the statistic measuremnt function
+          stat_functions.start_stat(jsonObj,time_stamp); 
+          // function will create a statistic file in database_files/devices_stats and will start the statistic measurement function
         }
   
         // in any case (device was offline or online before) - update the device_cache_table to the newes data about the this device and mark the device as online (device_status=1)
@@ -418,9 +419,7 @@ async function calcAvgSpeedAndUpdateCacheTable(jsonObj, time_stamp){
         gsm_status="${jsonObj.gsm_status}",
         sos_status=${jsonObj.sos_status},
         avg_speed="${avgSpeedKmh.toFixed(2)}",
-        distance=${0},
-        total_pulse=${0},
-        update_counter=${0}
+        distance=${0}
         WHERE device_sn=${jsonObj.GSTSerial}`, function(err, result, fields){
           if(err)
             throw err;

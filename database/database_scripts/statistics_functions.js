@@ -7,25 +7,35 @@ const mysql = require('mysql');
 // using mysql connection pool to manage connections and keep the connections to mysql db alive
 var mysqlPool = mysql.createPool("mysql://bbf377481226a0:eaef03fd@us-cdbr-iron-east-02.cleardb.net/heroku_99593e22b69be93?reconnect=true");
 
-var timers = [];
-/* Statistics include:
+var timers = []; // set interval timers for later stopping the setInterval function when device goes "offline"
+
+
+/* 
+
+Statistics include:
+
 1. calories counter - how much calories the device user burned in the past hour/day
    basis on avg speed, pulse, distance.
 
-3. distance that the user walked in the past hour/day
+3. distance that the user walked in for the past minute and whole day
 
-all statistics data is stored in: database -> tables -> stats_per_hour
-updates with new data every 3 seconds and resets all data each hour (and starts over)
+4. avg heart rate for the past minute and for whole day
+
+5. average speed for the past minute and whole day
+
+
+all statistics data is stored in the database and resets every day
 
 */
 
 
 // main function that starts the statistics infinite data proccessing
 async function start_stat(jsonObj,time_stamp){
+    // when function is called - device just became "online" - create the statistic file before starting statistic measurement
     getUserInfoAndCreateStatFile(jsonObj,time_stamp);
 
     /* ################ for local test - uncomment this part ################ */
-    //console.log(`statistics started for device ${jsonObj.GSTSerial}`);
+    console.log(`statistics started for device ${jsonObj.GSTSerial}`);
     
 
     // set interval triggers a function every 1 minute (60000 ms)
@@ -38,7 +48,7 @@ async function start_stat(jsonObj,time_stamp){
                     jsonDataFromFile = JSON.parse(data); // parsing the data from the file to JSON
 
                     /* ################ for local test - uncomment this part ################ */
-                    //console.log(`statistic file parsed correctly`);
+                    console.log(`statistic file parsed correctly`);
                     
 
                 } catch (error) {
@@ -46,7 +56,7 @@ async function start_stat(jsonObj,time_stamp){
                     var data = fs.readFileSync(`./database/database_files/devices_stats/stats_device_${jsonObj.GSTSerial}.txt`);
                     jsonDataFromFile = JSON.parse(data); // parsing the data from the file to JSON
                     /* ################ for local test - uncomment this part ################ */
-                    // console.log(`server error ${error} - reseting device ${jsonObj.GSTSerial} statistics`);
+                    console.log(`server error ${error} - resetting device ${jsonObj.GSTSerial} statistics`);
                 }
 
                         
@@ -62,6 +72,7 @@ async function start_stat(jsonObj,time_stamp){
                 // dateTimeCurrent is the current dateTime object from the location where the server is located
                 // cloud services are often located in different time zones
                 var dateTimeCurrent = new Date();
+
                 /* ################ for local test - uncomment this part ################ */
                 // dateTimeCurrent.setHours(dateTimeCurrent.getHours()-3);
 
@@ -86,7 +97,7 @@ async function start_stat(jsonObj,time_stamp){
                     reportDate.setMinutes(0);
                     reportDate.setMilliseconds(0);
 
-                    // daving the daily stat for the previous day in the database
+                    // saving daily statistic report the daily stat for the previous day in the database
                     mysqlPool.query(`INSERT INTO device_statistic_daily_reports(device_sn, avg_pulse, distance, avg_speed, calories, date)
                     VALUES(${jsonDataFromFile[0].device_id}, ${jsonDataFromFile[0].avg_pulse_daily}, ${parseFloat(jsonDataFromFile[0].total_distance).toFixed(3)}, ${parseFloat(jsonDataFromFile[0].avg_speed).toFixed(3)} ,${parseFloat(jsonDataFromFile[0].approx_calories).toFixed(2)}, "${reportDate.toISOString().slice(0, 19).replace('T', ' ')}")`, function(err, result, fields){
                         if(err) throw err;
@@ -119,7 +130,7 @@ async function start_stat(jsonObj,time_stamp){
                         if(err) throw err;
                         else{
                             /* ################ for local test - uncomment this part ################ */
-                            // console.log(`statistic for device: ${jsonDataFromFile[0].device_id}  -  updated`);
+                            console.log(`statistic for device: ${jsonDataFromFile[0].device_id}  -  updated`);
                         }
                     });
                 }
@@ -172,8 +183,8 @@ async function start_stat(jsonObj,time_stamp){
                     // this numbers were taken from https://www.health.harvard.edu/heart-health/what-your-heart-rate-is-telling-you arcticle
                     // numbers represent the normal heart rate levels according to age age group
 
-                    // calories burned calculation:
-                    // to measure the accurate calories burned we need to use:
+                    // calculate calories burned in kCal:
+                    // to measure the calories burned we need to use:
                     // 1. age
                     var userAge = jsonDataFromFile[0].user_age;
                             
@@ -198,20 +209,22 @@ async function start_stat(jsonObj,time_stamp){
                     // Accurate Calorie Burned Calculator Formula for Women(kCal):
                     /* Calorie Burned = [ (AGE_IN_YEAR x 0.074) + (WEIGHT_IN_KILOGRAM x 0.1263) + (HEART_BEAT_PER_MINUTE x 0.4472) - 20.4022] x DURATION_IN_MINUTE / 4.184 */
 
-                    // for Woman
+                    // formula for Woman
                     var calories;
                     if(userGender){
                         calories = [ (userAge * 0.074) + (userWeightInKg * 0.1263) + (avgPulsePerTimeSlice * 0.4472) - 20.4022 ] * 1 / 4.184;
                     }
-                    // for Men
+                    // formula for Men
                     else{
                         calories = [ (userAge * 0.2017) + (userWeightInKg * 0.1988) + (avgPulsePerTimeSlice * 0.6309) - 55.0969 ] * 1 / 4.184;
                     }
 
-                    // add calories to file
+                    
                     if(calories < 0){
                         calories = 0;
                     }
+
+                    // add calories to file
                     jsonDataFromFile[0].approx_calories += calories;
 
                     jsonDataFromFile[0].avg_steps = parseFloat(jsonDataFromFile[0].total_distance) * 1250; // approx. number of steps in 1 km for average person
@@ -232,7 +245,7 @@ async function start_stat(jsonObj,time_stamp){
                         else{
 
                             /* ################ for local test - uncomment this part ################ */
-                            // console.log(`statistic for device: ${jsonDataFromFile[0].device_id}  -  updated`);
+                            console.log(`statistic for device: ${jsonDataFromFile[0].device_id}  -  updated`);
                             
                         }
                     });
@@ -243,23 +256,23 @@ async function start_stat(jsonObj,time_stamp){
                     
 
                     /* ########################  for local test uncomment this  ########################## */
+                    console.log(`\n\n################\n`);
+                    console.log(`device [${jsonDataFromFile[0].device_id}] statistic report for passed minute:\n`);
+                    console.log(`@ Pulse:\n`);
+                    console.log(`success pulse countings for past 1 minute: ${jsonDataFromFile[0].pulse_counter} times`);
+                    console.log(`total minutes with successful pulse countings: ${jsonDataFromFile[0].pulse_minute_counter} minutes`);
+                    console.log(`average pulse for past 1 minute: ${jsonDataFromFile[0].avg_pulse} bpm`);
+                    console.log(`average pulse for the whole day: ${jsonDataFromFile[0].avg_pulse_daily} bpm\n\n`);
+                    console.log(`@ Distance:\n`);
+                    console.log(`distance passed for the past minute: ${parseFloat(jsonDataFromFile[0].distance).toFixed(2)} km`);
+                    console.log(`average speed for the passed minute: ${parseFloat(jsonDataFromFile[0].distance/0.0166667).toFixed(2)} km/h`);
+                    console.log(`total distance passed for whole day: ${parseFloat(jsonDataFromFile[0].total_distance).toFixed(2)} km`);
+                    console.log(`total speed for the whole day: ${parseFloat(jsonDataFromFile[0].avg_speed).toFixed(2)} km\h`);
+                    console.log(`total steps for the whole day: ${parseInt(jsonDataFromFile[0].avg_steps)} steps\n\n`);
+                    console.log(`@ Calories:\n`);
+                    console.log(`total steps for the whole day: ${parseFloat(jsonDataFromFile[0].approx_calories).toFixed(2)} kCal\n`);
+                    console.log(`\n################\n\n`);
 
-                    // console.log(`\n\n################\n`);
-                    // console.log(`device [${jsonDataFromFile[0].device_id}] statistic report for passed minute:\n`);
-                    // console.log(`@ Pulse:\n`);
-                    // console.log(`success pulse countings for past 1 minute: ${jsonDataFromFile[0].pulse_counter} times`);
-                    // console.log(`total minutes with successful pulse countings: ${jsonDataFromFile[0].pulse_minute_counter} minutes`);
-                    // console.log(`average pulse for past 1 minute: ${jsonDataFromFile[0].avg_pulse} bpm`);
-                    // console.log(`average pulse for the whole day: ${jsonDataFromFile[0].avg_pulse_daily} bpm\n\n`);
-                    // console.log(`@ Distance:\n`);
-                    // console.log(`distance passed for the past minute: ${parseFloat(jsonDataFromFile[0].distance).toFixed(2)} km`);
-                    // console.log(`average speed for the passed minute: ${parseFloat(jsonDataFromFile[0].distance/0.0166667).toFixed(2)} km/h`);
-                    // console.log(`total distance passed for whole day: ${parseFloat(jsonDataFromFile[0].total_distance).toFixed(2)} km`);
-                    // console.log(`total speed for the whole day: ${parseFloat(jsonDataFromFile[0].avg_speed).toFixed(2)} km\h`);
-                    // console.log(`total steps for the whole day: ${parseInt(jsonDataFromFile[0].avg_steps)} steps\n\n`);
-                    // console.log(`@ Calories:\n`);
-                    // console.log(`total steps for the whole day: ${parseFloat(jsonDataFromFile[0].approx_calories).toFixed(2)} kCal\n`);
-                    // console.log(`\n################\n\n`);
 
                     // reset the total_pulse, update_counter, distance befora starting next data collection
                     jsonDataFromFile[0].total_pulse = 0;
@@ -267,13 +280,14 @@ async function start_stat(jsonObj,time_stamp){
                     jsonDataFromFile[0].distance = 0;
                     jsonDataFromFile[0].pulse_counter = 0;
                 }
+
             // update the statistic file for this device
             fs.writeFileSync(`./database/database_files/devices_stats/stats_device_${jsonDataFromFile[0].device_id}.txt`, JSON.stringify(jsonDataFromFile));
-},60000);
+},60000); // run every minute
 
 // add new item to timers[] 
 // items in the array will help in stoping the setInterval function when device goes offline
-// if we dont stop the setInterval - function will continue collecting data for statistic even when device is offline which result in error becasue the content of the statistic file will be emtied when device goes offline
+// if we dont stop the setInterval - function will continue collecting data for statistic even when device is offline which result in uncorrect statistic data
 var timerObj = {
     itemId: jsonObj.GSTSerial, // device_id
     timerId: timer_id // setInterval id (for stoping/ clearing setInterval)
@@ -286,7 +300,7 @@ timers.push(timerObj);
 
 
 
-// utility functions for this statistic data proccessing
+// utility functions
 
 // method to fetch device user data and create stats_device_<device_id>.txt file for statistics
 function getUserInfoAndCreateStatFile(jsonObj,time_stamp){
@@ -432,7 +446,7 @@ let clearTimerInterval = (device_id)=>{
         clearInterval(timers[i].timerId); // stop setInterval by its ID
         timers.splice(i, 1); // remove the object from array
         /* ################ for local test - uncomment this part ################ */
-        // console.log("set interval cleared");
+        console.log("set interval cleared");
         break;
       }
     }

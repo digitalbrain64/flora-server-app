@@ -15,7 +15,6 @@ var mysqlPool = mysql.createPool("mysql://bbf377481226a0:eaef03fd@us-cdbr-iron-e
 var openWeatherApiKey = "dd600a6f3524bad742db42efe5147d7e";
 
 
-
 /* Device User Functions */
 
 // function returns device user contacts
@@ -166,51 +165,7 @@ function get_device_user_full_data_by_user(callback, user_id){
 
 
 
-
-
 /* Other Functions */
-
-// function returns highest pulse measurements - when was the highest pulse measurments by device id
-function get_highest_pulse(callback, device_id){
-    mysqlPool.query(`SELECT log_time, latitude, longitude, pulse
-    FROM devices_realtime_data
-    WHERE pulse = (SELECT MAX(pulse) FROM flora_device_data) AND device_sn=${device_id}`, function(error, results, fields){
-      if(error)
-         return callback(error, results);
-      else{
-        if(results.length == 0){
-          callback(error, [{
-            status : "error",
-            message : `no data for device id : ${device_id}`
-          }]);
-        }
-        else{
-          callback(error , results);
-        }
-      }
-    })
-}
-
-// function returns lowest pulse measurements
-function get_lowest_pulse(callback, device_id){
-    mysqlPool.query(`SELECT log_time, latitude, longitude, pulse
-    FROM devices_realtime_data
-    WHERE pulse = (SELECT MIN(pulse) FROM flora_device_data) AND device_sn=${device_id}`, function(error, results, fields){
-      if(error)
-         return callback(error, results);
-      else{
-        if(results.length == 0){
-          callback(error, [{
-            status : "error",
-            message : `no data for device id : ${device_id}`
-          }])
-        }
-        else{
-          callback(error , results);
-        }
-      }
-    })
-}
 
 function get_sos_incidents(callback, app_user_id){
     // check if user has privileges
@@ -289,7 +244,6 @@ function get_location_history(callback,device_sn, from_date, to_date){
       }  
     });
 }
-
 
 
 
@@ -680,8 +634,6 @@ function get_highest_lowest_pulse(callback, device_sn){
 
 
 module.exports = {
-    get_highest_pulse,
-    get_lowest_pulse,
     user_login,
     get_weather_update,
     get_device_updates,
