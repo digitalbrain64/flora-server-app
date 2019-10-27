@@ -1,8 +1,15 @@
 # flora-server-app
-GST Service main server application.
-GST service is a system that allows you to track and monitor GST devices all around the globe.
-GST devices are sending data to the GST main server every 3 seconds.
-The GST server is storing the data in the MySQL database and does some calculations.
+GST Service main server application for tracking GST device in real-time.
+GST devices are equipped with a GPS module, GSM module (with SIM card) , Heart-rate sensor, Bluethooth Module.
+GST device are sending data (JSON string through HTTP protocol) to the GST main server.
+The data that is sent to the main GST server:
+1) heart rate of the user.
+2) GPS location of the user (latitude, longitude).
+3) Status of every module: percentage of the battery, it GPS is on or off, is the Bluetooth module is on or off etc...
+
+
+
+The GST server is storing the data in the MySQL database and does calculations.
 
 Main functions on the server:
 1) Responding to the data from GST devices and storing the data inside the correct MySQL tables.
