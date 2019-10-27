@@ -2,6 +2,7 @@
 GST Service main server application for tracking GST device in real-time.
 GST devices are equipped with a GPS module, GSM module (with SIM card) , Heart-rate sensor, Bluethooth Module.
 GST device are sending data (JSON string through HTTP protocol) to the GST main server.
+
 The data that is sent to the main GST server:
 1) heart rate of the user.
 2) GPS location of the user (latitude, longitude).
